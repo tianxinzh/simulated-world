@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18282d">
+<title>BAYPORT — San Francisco Bay Miniature Airport</title>
+<style>
+:root{color-scheme:dark;--cream:#f3ecdb;--muted:#b6c2bc;--gold:#e8b879;--line:rgba(235,236,214,.19)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#18282d;color:var(--cream);font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif}button{font:inherit;color:inherit}button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:5px}#stage{position:fixed;inset:0;touch-action:none;outline:none}#stage canvas{display:block;width:100%;height:100%}.vignette{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,23,29,.43),transparent 25%,transparent 77%,rgba(10,19,22,.5));z-index:2}
+header{position:fixed;top:31px;left:37px;right:34px;display:flex;align-items:flex-start;justify-content:space-between;z-index:5;pointer-events:none}.brand{pointer-events:none}.eyebrow{font-size:9px;letter-spacing:3.2px;color:#d5c5a7;display:flex;align-items:center;gap:9px}.eyebrow:before{content:"";width:23px;height:1px;background:var(--gold)}h1{font-family:Georgia,"Times New Roman",serif;font-size:51px;font-weight:400;line-height:1;margin:10px 0 9px;letter-spacing:6px}.brand p{font-size:11px;letter-spacing:3px;margin:0;color:#d9dfd6}.tools{display:flex;align-items:center;gap:9px;pointer-events:auto}.tool{border:1px solid var(--line);background:rgba(20,38,42,.6);backdrop-filter:blur(16px);border-radius:50%;width:38px;height:38px;display:grid;place-items:center;cursor:pointer;transition:.2s}.tool:hover{background:#43534f;border-color:#ddb985}.tool svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.clock{display:flex;align-items:center;gap:10px;padding:10px 15px;border:1px solid var(--line);background:rgba(20,38,42,.6);backdrop-filter:blur(16px);border-radius:25px;font-size:11px;min-width:133px;font-variant-numeric:tabular-nums;letter-spacing:.7px}.clock i{width:6px;height:6px;background:#e9c68d;border-radius:50%;box-shadow:0 0 10px #edb875}.clock small{font-size:9px;color:#b6c6bf}.edition{position:fixed;right:37px;top:88px;text-align:right;font-size:9px;letter-spacing:2px;color:#c5cfc7;z-index:3;line-height:1.9;pointer-events:none}
+footer{position:fixed;bottom:25px;left:36px;right:36px;display:flex;align-items:end;justify-content:space-between;z-index:4;pointer-events:none}.status{display:flex;align-items:center;gap:15px;line-height:1.8}.status .dot{display:inline-block;width:6px;height:6px;background:#a9d6ab;border-radius:50%;margin-right:7px;box-shadow:0 0 10px #96cb8e}.status .label{font-size:9px;letter-spacing:2px;color:#bdcbbf}.status strong{font-weight:400;font-size:12px;letter-spacing:1px}.status .divide{height:29px;width:1px;background:var(--line)}.hint{font-size:10px;letter-spacing:.8px;color:#d2d9d2;display:flex;align-items:center;gap:13px}.hint span{opacity:.5}.hint button{pointer-events:auto;background:none;border:0;padding:4px 0;cursor:pointer;color:#edd6ac;border-bottom:1px solid #89734f;font-size:10px;letter-spacing:1px}.scale{position:fixed;left:37px;bottom:91px;color:#cbd5cc;z-index:3;font-size:8px;letter-spacing:1.9px;pointer-events:none}.scale b{font-size:12px;font-weight:400;color:#efd3a4}.scale-line{width:76px;border-top:1px solid #b5bca6;margin-top:7px;position:relative}.scale-line:before,.scale-line:after{content:"";position:absolute;top:-4px;height:7px;border-left:1px solid #b5bca6}.scale-line:after{right:0}
+#tooltip{position:fixed;z-index:12;pointer-events:none;max-width:260px;padding:11px 14px;background:rgba(16,31,35,.94);border:1px solid rgba(238,205,153,.4);border-radius:8px;box-shadow:0 8px 24px #0005;font-size:11px;line-height:1.8;opacity:0;transition:opacity .15s;color:#edf0df}#tooltip strong{color:#f1c588;font-weight:500}#toast{position:fixed;z-index:15;left:50%;bottom:88px;transform:translate(-50%,10px);opacity:0;transition:.35s;background:rgba(16,31,35,.94);border:1px solid #ddba7d55;border-radius:30px;padding:12px 24px;font-size:12px;letter-spacing:.6px;pointer-events:none;max-width:90%;white-space:nowrap}#toast.show{opacity:1;transform:translate(-50%,0)}
+#loading{position:fixed;inset:0;background:#18282d;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity .8s}.load-title{font:48px Georgia,serif;letter-spacing:9px;color:#ecd5b3}.load-sub{font-size:10px;letter-spacing:4px;margin:18px 0 30px;color:#bbc7bf}.load-track{height:2px;width:220px;background:#394a49;position:relative;overflow:hidden}.load-track:after{content:"";display:block;width:60px;height:2px;background:#e8b879;animation:load 1.5s infinite ease-in-out}#load-message{font-size:11px;color:#bdcbc3;margin-top:20px;line-height:2;text-align:center;max-width:520px;padding:0 20px}@keyframes load{from{transform:translateX(-60px)}to{transform:translateX(220px)}}
+#guide{position:fixed;inset:0;z-index:30;background:#071a2488;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:22px}#guide.open{display:flex}.guide-card{width:510px;max-height:90vh;overflow:auto;background:#203239f5;border:1px solid #a3987355;border-radius:16px;padding:29px 31px;box-shadow:0 30px 100px #0007}.guide-top{display:flex;justify-content:space-between;align-items:start}.guide-card h2{font:28px Georgia,"PingFang SC",serif;margin:0 0 7px;font-weight:400;letter-spacing:1px}.guide-card p{font-size:12px;line-height:1.9;color:#bbc9c5;margin:12px 0}.guide-card .sub{font-size:9px;letter-spacing:2px;color:#e2bd85}.guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:21px 0}.guide-grid button{background:#ffffff06;border:1px solid #b2bea429;border-radius:8px;text-align:left;padding:12px 13px;cursor:pointer;font-size:12px}.guide-grid button:hover{background:#e8b87915;border-color:#e8b87977}.guide-grid small{display:block;color:#aebdb6;font-size:10px;margin-top:6px}.guide-grid kbd{float:right;font-size:10px;color:#e3be84}.guide-note{border-top:1px solid #ffffff17;padding-top:13px;font-size:10px!important}.guide-close{border:0;background:none;color:#ead5b4;font-size:23px;cursor:pointer;padding:0 0 10px 10px}.speed-input{display:flex;align-items:center;gap:15px;font-size:12px}.speed-input input{width:100%;accent-color:#e1ab64}#sound-icon.off:after{content:""}body.clean header,body.clean footer,body.clean .edition,body.clean .scale{opacity:0;pointer-events:none}
+@media(max-width:750px){header{left:20px;right:18px;top:20px}h1{font-size:36px;letter-spacing:4px}.eyebrow{font-size:7px;letter-spacing:2px}.brand p{font-size:9px;letter-spacing:1px}.tools{gap:6px}.tool{width:32px;height:32px}.clock{padding:8px 10px;font-size:10px;min-width:100px}.clock small{display:none}.edition{right:20px;top:67px;font-size:7px}.scale{display:none}footer{left:20px;right:20px;bottom:20px}.hint{max-width:180px;line-height:1.8;text-align:right;display:block;font-size:9px}.hint span{display:none}.status{gap:9px}.status .label{font-size:7px;letter-spacing:1px}.status strong{font-size:11px}#toast{font-size:10px;white-space:normal;text-align:center;width:max-content}.guide-card{padding:24px}}
+@media(prefers-reduced-motion:reduce){.load-track:after{animation-duration:3s}*{scroll-behavior:auto}}
+
+.tool.language{width:55px;border-radius:22px;font-size:10px;font-weight:600;letter-spacing:.5px;gap:0}
+.tool[aria-pressed="true"]{border-color:#ddb985;background:#43534f}.tool:disabled{opacity:.4;cursor:default}
+header,footer,.edition,.scale{transition:opacity .3s}.guide-grid .guide-item{background:#ffffff06;border:1px solid #b2bea429;border-radius:8px;text-align:left;padding:12px 13px;font-size:12px;line-height:1.45}.guide-grid .guide-item small{display:block;color:#aebdb6;font-size:10px;margin-top:6px}.guide-grid .guide-item kbd{float:right;font:10px monospace;color:#e3be84;margin-left:8px}
+.guide-meta{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-block:1px solid #ffffff17;font-size:11px;color:#b9c7bd}.guide-meta strong{color:#e9c28c;font-weight:400}.guide-card{width:550px}.guide-card h2{font-size:27px}.guide-note{margin-bottom:0!important}
+#failure{display:none;position:fixed;inset:0;z-index:110;box-sizing:border-box;padding:16vh 12vw;background:#18282d;color:#f3ecdb;font:16px/1.9 Arial,"PingFang SC","Microsoft YaHei",sans-serif;white-space:pre-wrap}
+body.clean header,body.clean footer,body.clean .edition,body.clean .scale{visibility:hidden;opacity:0;pointer-events:none}body.clean .tools,body.clean footer button{pointer-events:none}body.clean #tooltip{visibility:hidden}.clock{min-width:143px}.clock small{white-space:nowrap}.status .label{white-space:nowrap}.brand p{max-width:390px;line-height:1.65}.hint .desktop-hint{opacity:1}.guide-card:focus{outline:none}
+@media(max-width:850px){.hint .desktop-hint{display:none}.brand p{letter-spacing:1.5px}.edition{font-size:8px}.clock{min-width:118px}.tools{gap:6px}.tool{height:34px;width:34px}.tool.language{width:48px}h1{font-size:42px}}
+@media(max-width:650px){header{top:18px;left:18px;right:18px}.eyebrow{font-size:6px;letter-spacing:1.55px}h1{font-size:31px;letter-spacing:3.6px;margin:11px 0 7px}.brand p{font-size:8px;letter-spacing:1px;max-width:205px;line-height:1.75}.tools{gap:5px}.tool{width:28px;height:28px}.tool svg{width:14px;height:14px}.tool.language{width:39px;font-size:9px}.clock{position:absolute;right:0;top:45px;min-width:auto;padding:7px 10px}.clock small{display:none}.edition{display:none}.guide-card{padding:22px 21px}.guide-card h2{font-size:24px}.guide-grid{gap:7px;margin:16px 0}.guide-grid .guide-item{padding:10px;font-size:11px}.guide-grid .guide-item small{font-size:10px}.guide-meta{font-size:10px}footer{left:18px;right:18px;bottom:18px}.status{gap:11px}.status strong{font-size:10px}.status .label{font-size:7px}.hint{max-width:90px}.scale{display:none}}
+@media(max-width:350px){.tool{width:24px;height:24px}.tool.language{width:34px}.tools{gap:4px}h1{font-size:26px}.eyebrow{letter-spacing:1px}.guide-grid{grid-template-columns:1fr}.brand p{max-width:160px}}
+@media(prefers-reduced-motion:reduce){header,footer,.edition,.scale,#toast,#tooltip,#loading{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="stage" tabindex="0" data-i18n-aria="stageAria" aria-label="Interactive Bay Area miniature airport. Drag the physical controls on the front of the table."></div>
+<div class="vignette"></div>
+<header><div class="brand"><div class="eyebrow">THE LITTLE WORLDS COLLECTION / 02</div><h1>BAYPORT</h1><p data-i18n="subtitle">San Francisco Bay · Miniature Airport Workshop</p></div><div class="tools">
+<div class="clock"><i id="sun-dot"></i><span id="clock-text">16:40</span><small id="day-text">GOLDEN HOUR</small></div>
+<button class="tool language" id="language-btn" title="Switch to Chinese" aria-label="Switch to Chinese" aria-pressed="false">EN / 中</button>
+<button class="tool" id="sound-btn" data-i18n-title="soundOn" aria-label="Enable synthesized ambient sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 5 6m0-6-5 6"/></svg></button>
+<button class="tool" id="home-btn" data-i18n-title="homeTitle" data-i18n-aria="homeTitle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8M6 10v10h12V10M10 20v-6h4v6"/></svg></button>
+<button class="tool" id="fullscreen-btn" data-i18n-title="fullscreen" data-i18n-aria="fullscreen" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+</div></header>
+<div class="edition"><span data-i18n="edition">A HANDCRAFTED, LIVING DIORAMA</span><br><span data-i18n="editionSub">ARTISTIC SCALE · PROCEDURAL VOXELS</span></div>
+<div class="scale"><b data-i18n="scale">TABLETOP</b> &nbsp; <span data-i18n="scaleSub">BAY AREA EDITION</span><div class="scale-line"></div></div>
+<footer><div class="status"><div><div class="label"><span class="dot" id="run-dot"></span><span id="run-label">AIRPORT LIVE</span></div><strong id="aircraft-text">13 aircraft · twin runways</strong></div><div class="divide"></div><div><div class="label" data-i18n="trafficLabel">TRAFFIC</div><strong id="speed-text">40% · 1.00×</strong></div></div><div class="hint"><span class="desktop-hint" data-i18n="footerHint">Drag to orbit / Scroll to explore / Operate the table console</span><button id="help-btn" aria-haspopup="dialog" aria-controls="guide" data-i18n="guideButton">Field guide ↗</button></div></footer>
+<div id="tooltip" role="tooltip"></div><div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="loading" role="status"><div class="load-title">BAYPORT</div><div class="load-sub">A SMALL WORLD, ALWAYS IN MOTION</div><div class="load-track"></div><div id="load-message" data-i18n="loading">Preparing the runways, bringing the bay to life…</div></div>
+<div id="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title" aria-hidden="true"><div class="guide-card" tabindex="-1"><div class="guide-top"><div><div class="sub" data-i18n="welcomeRole">WELCOME, CONTROLLER</div><h2 id="guide-title" data-i18n="guideTitle">Your bay. Ready for takeoff.</h2></div><button class="guide-close" id="close-guide" data-i18n-aria="closeGuide">×</button></div>
+<p data-i18n="guideIntro">The controls along the front of the table are real 3D objects. Drag the red traffic lever, turn the time dial, flick the switch, and press the buttons. Hover over a control for a hint.</p>
+<div class="guide-meta"><span><span data-i18n="trafficLabel">TRAFFIC</span> <strong id="guide-speed">40% · 1.00×</strong></span><span><span data-i18n="cycleLabel">DAY CYCLE</span> <strong id="guide-cycle">AUTO · 240s</strong></span></div>
+<div class="guide-grid">
+<div class="guide-item"><kbd>↑ / ↓</kbd><span data-i18n="controlSpeed">Traffic lever</span><small data-i18n="helpSpeed">Drag up / down. All traffic shares the same speed. Space pauses / resumes.</small></div>
+<div class="guide-item"><kbd>N / A</kbd><span data-i18n="controlDay">Time of day</span><small data-i18n="helpDay">Click for day / sunset / night / dawn. Drag to scrub. Double-click, or A, restores the cycle.</small></div>
+<div class="guide-item"><kbd>L</kbd><span data-i18n="controlRunway">Airfield lights</span><small data-i18n="helpRunway">Toggle runway and taxiway lights. Enabled lights brighten automatically after sunset.</small></div>
+<div class="guide-item"><kbd>B</kbd><span data-i18n="controlCity">City lights</span><small data-i18n="helpCity">Toggle terminal, city, street, and bridge lighting.</small></div>
+<div class="guide-item"><kbd>R / T</kbd><span data-i18n="controlTakeoff">Request departure</span><small data-i18n="helpTakeoff">Release the waiting aircraft. Otherwise queue its next departure.</small></div>
+<div class="guide-item"><kbd>E</kbd><span data-i18n="controlEmergency">Fire rescue</span><small data-i18n="helpEmergency">Dispatch the fire engine on its reserved route, then return to normal operation.</small></div>
+</div>
+<p data-i18n="guideNavigation">Drag empty space to orbit; scroll to zoom; Shift + drag or right-drag to pan. On touch screens, use two fingers to zoom / pan. 0 / Home resets the view. C hides the interface. ? opens this guide. Esc closes it.</p>
+<p data-i18n="guideSound">M toggles synthesized ambience; H plays a terminal chime. Sound starts only after your interaction. The top-right EN / 中 button changes the interface and console labels.</p>
+<p class="guide-note" data-i18n="guideNote">A 240-second day / night cycle. Space pauses traffic, not the sky. This airport is an artistic Bay Area miniature, not a replica of SFO or a map to scale. Geometry, wood grain, labels, lights, and audio are generated inside this file. Only Three.js is loaded from a CDN.</p>
+</div></div>
+<div id="failure" role="alert"></div>
+
+<script>
+'use strict';
+
+// Shared LITTLE WORLDS shell, adapted from the user's BAYLINE reference.
+const $ = id => document.getElementById(id);
+const UI = {
+ en:{title:'BAYPORT — San Francisco Bay Miniature Airport',subtitle:'San Francisco Bay · Miniature Airport Workshop',stageAria:'Interactive Bay Area miniature airport. Drag the physical controls on the front of the table. Press question mark for keyboard instructions.',soundOn:'Enable synthesized ambient sound · M',soundOff:'Mute ambient sound · M',homeTitle:'Return to the table · 0',fullscreen:'Toggle fullscreen',edition:'A HANDCRAFTED, LIVING DIORAMA',editionSub:'ARTISTIC SCALE · PROCEDURAL VOXELS',scale:'TABLETOP',scaleSub:'BAY AREA EDITION',trafficLabel:'TRAFFIC',footerHint:'Drag to orbit / Scroll to explore / Operate the table console',guideButton:'Field guide ↗',loading:'Preparing the runways, bringing the bay to life…',welcomeRole:'WELCOME, CONTROLLER',guideTitle:'Your bay. Ready for takeoff.',closeGuide:'Close the field guide',guideIntro:'The controls along the front of the table are real 3D objects. Drag the red traffic lever, turn the time dial, flick the switch, and press the buttons. Hover over a control for a hint.',cycleLabel:'DAY CYCLE',controlSpeed:'Traffic lever',controlDay:'Time of day',controlRunway:'Airfield lights',controlCity:'City lights',controlTakeoff:'Request departure',controlEmergency:'Fire rescue',helpSpeed:'Drag up / down. All traffic shares the same speed. Space pauses / resumes.',helpDay:'Click for day / sunset / night / dawn. Drag to scrub. Double-click, or A, restores the cycle.',helpRunway:'Toggle runway and taxiway lights. Enabled lights brighten automatically after sunset.',helpCity:'Toggle terminal, city, street, and bridge lighting.',helpTakeoff:'Release the waiting aircraft. Otherwise queue its next departure.',helpEmergency:'Dispatch the fire engine on its reserved route, then return to normal operation.',guideNavigation:'Drag empty space to orbit; scroll to zoom; Shift + drag or right-drag to pan. On touch screens, use two fingers to zoom / pan. 0 / Home resets the view. C hides the interface. ? opens this guide. Esc closes it.',guideSound:'M toggles synthesized ambience; H plays a terminal chime. Sound starts only after your interaction. The top-right EN / 中 button changes the interface and console labels.',guideNote:'A 240-second day / night cycle. Space pauses traffic, not the sky. This airport is an artistic Bay Area miniature, not a replica of SFO or a map to scale. Geometry, wood grain, labels, lights, and audio are generated inside this file. Only Three.js is loaded from a CDN.',day:'DAYLIGHT',sunset:'GOLDEN HOUR',night:'NIGHTFALL',dawn:'DAWN',auto:'AUTO',manual:'MANUAL',paused:'TRAFFIC PAUSED',idle:'AIRPORT IDLE',live:'AIRPORT LIVE',rescue:'FIRE RESCUE ACTIVE',queued:'28L · DEPARTURE QUEUED',ready:'28L · READY FOR DEPARTURE',departing:'28L · DEPARTING',approach:'28L · RETURN APPROACH',airborne:'28L · AIRBORNE',runway:'RWY',city:'CITY',on:'ON',off:'OFF',consoleHint:'CLICK / DRAG THE PHYSICAL CONTROLS',location:'BPI · PACIFIC COAST, CALIFORNIA',pauseToast:'Traffic paused · Space resumes without changing your speed setting',resumeToast:'Traffic resumed',speedToast:'Traffic set to ',dayToast:'Time of day: ',autoToast:'Automatic 240-second day / night cycle restored',runwayOn:'Airfield lights enabled · brighter after sunset',runwayOff:'Runway and taxiway lights switched off',cityOn:'City and building lights enabled',cityOff:'City and building lights switched off',takeoffToast:'Departure cleared · runway 28L',queuedToast:'Departure request queued for the next available cycle',emergencyToast:'Fire rescue dispatched · departure clearances held',emergencyActive:'Fire rescue is already responding',homeToast:'Back at the table · standing-height view',readyToast:'Welcome to BAYPORT · the table console is interactive',soundEnabled:'Synthesized airport ambience enabled',soundDisabled:'Ambient sound muted',audioError:'Audio is not available in this browser',chimeToast:'BAYPORT · terminal chime',fullError:'Fullscreen was not allowed by the browser',webglLost:'The graphics context was interrupted. Reload to restore the exhibit.',cdnError:'Three.js could not be loaded. Connect to the internet and allow jsDelivr or unpkg, then reload. No local server is required.',initError:'Unable to initialize WebGL. Enable hardware acceleration in Chrome and reload.',uiRestored:'Interface restored',aircraftText:n=>`${n} aircraft · twin runways`},
+ zh:{title:'BAYPORT — 旧金山湾区微缩机场工坊',subtitle:'旧金山湾区 · 微缩机场工坊',stageAria:'可交互的湾区微缩机场。拖拽桌前实体控件操作，按问号查看键盘操作说明。',soundOn:'开启合成环境音 · M',soundOff:'关闭合成环境音 · M',homeTitle:'回到桌前 · 0',fullscreen:'切换全屏',edition:'手工质感，持续运转的微缩世界',editionSub:'艺术化比例 · 程序化体素',scale:'桌上世界',scaleSub:'旧金山湾区特别版',trafficLabel:'交通速度',footerHint:'拖动环视 / 滚轮靠近 / 操作桌前控制台',guideButton:'操作指南 ↗',loading:'正在布置跑道，点亮海湾……',welcomeRole:'欢迎，机场调度员',guideTitle:'你的海湾，准备起飞。',closeGuide:'关闭操作指南',guideIntro:'桌子前缘的装置都可以实际操作。红色推杆支持上下拖拽；日夜旋钮可以转动，拨杆可以切换，按钮可以按下。鼠标悬停可查看说明。',cycleLabel:'昼夜循环',controlSpeed:'交通速度推杆',controlDay:'日夜旋钮',controlRunway:'跑道灯开关',controlCity:'城市灯光',controlTakeoff:'请求起飞',controlEmergency:'机场消防',helpSpeed:'向上加速，向下减速。所有交通共用速度；空格暂停 / 继续。',helpDay:'点击切换白天 / 黄昏 / 夜晚 / 黎明，拖拽自由调节。双击或按 A 恢复循环。',helpRunway:'切换跑道与滑行道灯。开启后，灯光随天色变暗而增强。',helpCity:'切换航站楼、城市、街道和桥梁灯光。',helpTakeoff:'放行等待中的飞机；飞机在运行时，将请求排入下一轮。',helpEmergency:'消防车沿专用路线出动，完成后返回并恢复正常运行。',guideNavigation:'拖动空白处环视，滚轮缩放，Shift + 拖动或右键拖动平移。触屏使用双指缩放 / 平移。0 / Home 回到桌前，C 切换无界面观赏，? 打开指南，Esc 关闭。',guideSound:'M 切换合成环境音，H 播放航站楼提示音。声音仅在操作后启动。右上角 EN / 中 切换界面与控制台标签；场景内美式地名和路牌保留英文。',guideNote:'每 240 秒经历一个昼夜；空格暂停交通，但不暂停天空。本模型参考湾区气质，并非真实 SFO 机场或等比例地图。几何体、木纹、文字、灯光与声音均由本文件内代码生成，唯一的网络依赖是 CDN 上的 Three.js。',day:'白天',sunset:'黄昏',night:'夜晚',dawn:'黎明',auto:'自动',manual:'手动',paused:'交通已暂停',idle:'机场待命',live:'机场运行中',rescue:'消防救援进行中',queued:'28L · 起飞请求已排队',ready:'28L · 等待起飞',departing:'28L · 正在起飞',approach:'28L · 返回进近',airborne:'28L · 飞行中',runway:'跑道',city:'城市',on:'开启',off:'关闭',consoleHint:'点击 / 拖动桌前实体控件',location:'BPI · 加利福尼亚 · 太平洋海岸',pauseToast:'交通已暂停 · 按空格继续，保留当前速度设定',resumeToast:'交通恢复运行',speedToast:'交通速度设为 ',dayToast:'湾区时间：',autoToast:'已恢复 240 秒自动昼夜循环',runwayOn:'跑道与滑行道灯已开启，随天色变暗而增强',runwayOff:'跑道与滑行道灯已关闭',cityOn:'城市与建筑灯光已开启',cityOff:'城市与建筑灯光已关闭',takeoffToast:'已放行起飞 · 28L 跑道',queuedToast:'起飞请求已加入下一轮可用周期',emergencyToast:'消防车已出动 · 暂停新的起飞许可',emergencyActive:'消防救援正在进行中',homeToast:'已回到桌前站立视角',readyToast:'欢迎来到湾区机场工坊 · 桌前控制台可以操作',soundEnabled:'合成机场环境音已开启',soundDisabled:'环境音已关闭',audioError:'此浏览器暂不支持播放声音',chimeToast:'BAYPORT · 航站楼提示音',fullError:'浏览器未允许全屏，可使用 Chrome 的全屏菜单',webglLost:'图形上下文已中断，请刷新页面恢复。',cdnError:'Three.js 加载失败。请连接网络并允许访问 jsDelivr 或 unpkg，然后刷新。本文件无需本地服务器。',initError:'无法初始化 WebGL。请在 Chrome 中启用硬件加速后刷新。',uiRestored:'界面已恢复',aircraftText:n=>`${n} 架飞机 · 双跑道运行`}
+};
+let language='en';try{language=localStorage.getItem('bayport-language')==='zh'?'zh':'en';}catch(_){}
+const tr=key=>UI[language][key]??UI.en[key]??key;
+let toastTimer,guideReturnFocus=null;
+function toast(text){if(document.body.classList.contains('clean'))return;$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2800);}
+function applyLanguage(){document.documentElement.lang=language==='zh'?'zh-CN':'en';document.title=tr('title');document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=tr(el.dataset.i18n));document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=tr(el.dataset.i18nTitle));document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',tr(el.dataset.i18nAria)));$('language-btn').textContent=language==='en'?'EN / 中':'中 / EN';$('language-btn').title=language==='en'?'切换为中文':'Switch to English';$('language-btn').setAttribute('aria-label',$('language-btn').title);$('language-btn').setAttribute('aria-pressed',String(language==='zh'));window.__airport?.refreshUI();}
+function setLanguage(value){language=value==='zh'?'zh':'en';try{localStorage.setItem('bayport-language',language);}catch(_){}applyLanguage();}
+function openGuide(){if($('guide').classList.contains('open'))return;guideReturnFocus=document.activeElement;$('guide').classList.add('open');$('guide').setAttribute('aria-hidden','false');for(const el of document.querySelectorAll('header,footer,#stage'))el.inert=true;$('tooltip').style.opacity=0;$('close-guide').focus();}
+function closeGuide(){if(!$('guide').classList.contains('open'))return;$('guide').classList.remove('open');$('guide').setAttribute('aria-hidden','true');for(const el of document.querySelectorAll('header,footer,#stage'))el.inert=false;(guideReturnFocus?.isConnected?guideReturnFocus:$('help-btn')).focus();}
+function toggleClean(){const clean=document.body.classList.toggle('clean');for(const el of document.querySelectorAll('header,footer'))el.inert=clean;if(clean){$('tooltip').style.opacity=0;$('toast').classList.remove('show');$('stage').focus();}else toast(tr('uiRestored'));}
+$('language-btn').onclick=()=>setLanguage(language==='en'?'zh':'en');$('help-btn').onclick=openGuide;$('close-guide').onclick=closeGuide;$('guide').addEventListener('click',e=>{if(e.target===$('guide'))closeGuide();});
+$('guide').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeGuide();}else if(e.key==='Tab'){e.preventDefault();$('close-guide').focus();}});
+$('fullscreen-btn').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(_){toast(tr('fullError'));}};
+document.addEventListener('fullscreenchange',()=>$('fullscreen-btn').setAttribute('aria-pressed',String(!!document.fullscreenElement)));
+$('home-btn').onclick=()=>window.__airport?.home();$('sound-btn').onclick=()=>window.__airport?.toggleSound();
+window.addEventListener('keydown',e=>{if(e.target?.matches?.('input,textarea,select,[contenteditable="true"]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='Escape'){if($('guide').classList.contains('open'))closeGuide();else if(document.body.classList.contains('clean'))toggleClean();return;}if($('guide').classList.contains('open'))return;const key=e.key.toLowerCase();if(key==='?'||key==='/'){e.preventDefault();if(!e.repeat)openGuide();}else if(key==='c'){if(!e.repeat)toggleClean();}else if(key==='0'||key==='home'){e.preventDefault();window.__airport?.home();}});
+applyLanguage();
+
+// 唯一的外部依赖：固定版本的 Three.js。没有图片、模型、字体、音频或数据请求。
+// 选用单文件经典构建，保证 Chrome 直接打开 file:// HTML，无需服务器或构建工具。
+
+const THREE_CDNS=['https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js','https://unpkg.com/three@0.160.1/build/three.min.js'];
+function loadThree(index=0){return new Promise((resolve,reject)=>{const s=document.createElement('script');let settled=false;const finish=(ok)=>{if(settled)return;settled=true;clearTimeout(timer);s.onload=s.onerror=null;if(ok&&window.THREE)resolve();else{s.remove();index+1<THREE_CDNS.length?loadThree(index+1).then(resolve,reject):reject(new Error(tr('cdnError')));}};const timer=setTimeout(()=>finish(false),14000);s.onload=()=>finish(true);s.onerror=()=>finish(false);s.src=THREE_CDNS[index];document.head.appendChild(s);});}
+loadThree().then(()=>{try{createAirport();}catch(e){fail(e);}}).catch(fail);
+function fail(e){$('loading').style.display='none';const p=$('failure');p.style.display='block';p.textContent='BAYPORT\n\n'+(e?.message||tr('initError'));console.error(e);}
+function createAirport(){
+const T=THREE, PI=Math.PI, TAU=2*PI, G=11.5;
+const clamp=T.MathUtils.clamp, lerp=T.MathUtils.lerp, smooth=(t)=>{t=clamp(t,0,1);return t*t*(3-2*t)};
+let seed=934871;function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
+const scene=new T.Scene();scene.background=new T.Color('#accbd0');scene.fog=new T.Fog('#accbd0',125,240);
+const renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.domElement.tabIndex=0;renderer.domElement.setAttribute('aria-label',tr('stageAria'));
+$('stage').appendChild(renderer.domElement);
+const camera=new T.PerspectiveCamera(52,innerWidth/innerHeight,.2,330);
+const model=new T.Group();model.position.y=G;scene.add(model);
+const ambient=new T.AmbientLight('#d7e8fa',.7);scene.add(ambient);
+const hemi=new T.HemisphereLight('#e7f6ff','#70624c',1.35);scene.add(hemi);
+const sun=new T.DirectionalLight('#ffebcb',3.1);sun.position.set(-30,68,20);sun.target.position.set(0,G,0);scene.add(sun,sun.target);
+sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-53,right:53,top:47,bottom:-47,near:1,far:145});sun.shadow.bias=-.00012;sun.shadow.normalBias=.065;
+const fill=new T.DirectionalLight('#b9d9ed',.75);fill.position.set(24,35,-27);scene.add(fill);
+const exhibition=new T.PointLight('#ffd39a',90,72,2);exhibition.position.set(0,28,29);scene.add(exhibition);
+const terminalLight=new T.PointLight('#ffd097',24,23,2);terminalLight.position.set(0,G+3.2,10.2);scene.add(terminalLight);
+const portLight=new T.PointLight('#91eaff',13,18,2);portLight.position.set(25,G+3,16);scene.add(portLight);
+const cityLight=new T.PointLight('#ffcb81',30,30,2);cityLight.position.set(2,G+3,-16);scene.add(cityLight);
+const M={
+ solid:new T.MeshStandardMaterial({color:0xffffff,roughness:.78,metalness:.02}),
+ metal:new T.MeshStandardMaterial({color:0xffffff,roughness:.37,metalness:.55}),
+ glass:new T.MeshStandardMaterial({color:0xffffff,roughness:.25,metalness:.4,emissive:'#ffa95d',emissiveIntensity:0}),
+ city:new T.MeshStandardMaterial({color:'#fff1b1',roughness:.44,emissive:'#ffc264',emissiveIntensity:.1}),
+ white:new T.MeshStandardMaterial({color:'#fff6d5',emissive:'#ffedbd',emissiveIntensity:.2}),
+ blue:new T.MeshStandardMaterial({color:'#399cfa',emissive:'#168aff',emissiveIntensity:.3}),
+ green:new T.MeshStandardMaterial({color:'#b0ffcc',emissive:'#3cff93',emissiveIntensity:.3}),
+ red:new T.MeshStandardMaterial({color:'#ff6652',emissive:'#ff201b',emissiveIntensity:.3}),
+ headlight:new T.MeshStandardMaterial({color:'#fff4cd',emissive:'#fff3b9',emissiveIntensity:.3}),
+ taillight:new T.MeshStandardMaterial({color:'#e55743',emissive:'#ff372a',emissiveIntensity:.3}),
+ policeBlue:new T.MeshStandardMaterial({color:'#8fbdff',emissive:'#2a7fff',emissiveIntensity:3}),
+ navRed:new T.MeshStandardMaterial({color:'#ff322a',emissive:'#ff201a',emissiveIntensity:3}),
+ navGreen:new T.MeshStandardMaterial({color:'#80ffc0',emissive:'#2dff8c',emissiveIntensity:3}),
+ navWhite:new T.MeshStandardMaterial({color:'#ffffff',emissive:'#d6f3ff',emissiveIntensity:3}),
+ beacon:new T.MeshStandardMaterial({color:'#ff4b29',emissive:'#ff2311',emissiveIntensity:4}),
+ emergency:new T.MeshStandardMaterial({color:'#f15b46',emissive:'#ff1708',emissiveIntensity:0}),
+ water:new T.MeshStandardMaterial({color:'#227f91',roughness:.32,metalness:.36}),
+};
+const cube=new T.BoxGeometry(1,1,1), cylinder=new T.CylinderGeometry(1,1,1,8), temp=new T.Object3D(), col=new T.Color();
+let instanceTotal=0;const blockers=[];
+// 所有重复的静态体素、窗户、树木、标线和灯均按材质合并为 InstancedMesh。
+class Batch{
+ constructor(parent){this.parent=parent;this.data=new Map();}
+ box(x,y,z,w,h,d,c='#ffffff',kind='solid',ry=0,rz=0){
+  if(w<=0||h<=0||d<=0)return;
+  temp.position.set(x,y,z);temp.rotation.set(0,ry,rz);temp.scale.set(w,h,d);temp.updateMatrix();
+  if(!this.data.has(kind))this.data.set(kind,[]);
+  this.data.get(kind).push([temp.matrix.clone(),c]);
+ }
+ flush(){const result=[];for(const [k,items] of this.data){if(!items.length)continue;const mesh=new T.InstancedMesh(cube,M[k],items.length);let i=0;for(const [matrix,c] of items){mesh.setMatrixAt(i,matrix);mesh.setColorAt(i++,col.set(c));}mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=!['white','blue','green','red','navRed','navGreen','navWhite','beacon','emergency','headlight','taillight','policeBlue'].includes(k);mesh.receiveShadow=true;mesh.computeBoundingSphere();this.parent.add(mesh);result.push(mesh);instanceTotal+=items.length;}this.data.clear();return result;}
+}
+const B=new Batch(model), V=(...a)=>B.box(...a);
+function meshBox(parent,w,h,d,c,x=0,y=0,z=0,material=null){const m=new T.Mesh(cube,material||new T.MeshStandardMaterial({color:c,roughness:.65}));m.scale.set(w,h,d);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+function block(x,z,w,d,h,y=0,name='building'){blockers.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,minY:y,maxY:y+h,name});}
+function beam(batch,a,b,width,color,depth=width,kind='solid'){
+ const mid=new T.Vector3().addVectors(a,b).multiplyScalar(.5), delta=new T.Vector3().subVectors(b,a), len=delta.length();
+ temp.position.copy(mid);temp.scale.set(width,len,depth);temp.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());temp.updateMatrix();
+ if(!batch.data.has(kind))batch.data.set(kind,[]);batch.data.get(kind).push([temp.matrix.clone(),color]);
+}
+function line(a,b,width=.06,color='#f3cb63',y=.065,kind='solid'){const dx=b[0]-a[0],dz=b[1]-a[1];V((a[0]+b[0])/2,y,(a[1]+b[1])/2,Math.hypot(dx,dz),.018,width,color,kind,-Math.atan2(dz,dx));}
+const labelCache=new Map();
+function textTexture(text,{fg='#f3ead7',bg=null,size=56,pad=22,font='sans-serif',weight='700',border=false}={}){
+ const key=JSON.stringify([text,fg,bg,size,pad,font,weight,border]);if(labelCache.has(key))return labelCache.get(key);
+ const lines=text.split('\n'), c=document.createElement('canvas'),ctx=c.getContext('2d');ctx.font=`${weight} ${size}px ${font}`;let w=Math.max(...lines.map(t=>ctx.measureText(t).width))+pad*2;
+ c.width=Math.ceil(Math.max(64,w));c.height=Math.ceil(lines.length*size*1.27+pad*2);ctx.font=`${weight} ${size}px ${font}`;
+ if(bg){ctx.fillStyle=bg;ctx.fillRect(0,0,c.width,c.height);}if(border){ctx.strokeStyle=fg;ctx.lineWidth=3;ctx.strokeRect(7,7,c.width-14,c.height-14);}
+ ctx.fillStyle=fg;ctx.textBaseline='middle';ctx.textAlign='center';lines.forEach((s,i)=>ctx.fillText(s,c.width/2,pad+size*.62+i*size*1.27));
+ const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());labelCache.set(key,tex);return tex;
+}
+function label(text,x,y,z,w,h,options={},parent=model){const tex=textTexture(text,options);const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tex,transparent:!options.bg,side:T.DoubleSide,depthWrite:!!options.bg,toneMapped:false}));m.position.set(x,y,z);if(options.ground)m.rotation.x=-PI/2;if(options.ry)m.rotation.y=options.ry;parent.add(m);return m;}
+function sign(text,x,z,w=2.2,h=.65,y=.8,bg='#174c50'){V(x,y/2,z,.075,y,.075,'#59655b');return label(text,x,y+.22,z,w,h,{bg,fg:'#f9edc8',size:42,border:true});}
+function road(x,z,w,d){V(x,.012,z,w,.07,d,'#64716e');}
+function roadDashes(x1,x2,z,y=.058,step=1.7){for(let x=x1;x<x2;x+=step)V(x,y,z,.72,.012,.05,'#f5eed3');}
+function lamp(x,z,h=1.75,airport=false){V(x,h/2,z,.075,h,.075,'#66766e','metal');V(x+.18,h,z,.43,.07,.14,'#475b5c');V(x+.28,h-.05,z,.18,.07,.14,'#ffffff',airport?'white':'city');V(x,.055,z,.24,.11,.24,'#c7c8b0');}
+function tree(x,z,s=1){V(x,.43*s,z,.16*s,.86*s,.16*s,'#87633f');const greens=['#317666','#478870','#649275','#78a073'];V(x,1.06*s,z,.95*s,.65*s,.83*s,greens[Math.floor(rnd()*4)]);V(x-.12*s,1.5*s,z,.67*s,.34*s,.59*s,greens[Math.floor(rnd()*4)]);V(x+.3*s,1.08*s,z+.16*s,.38*s,.43*s,.51*s,'#528b66');}
+function pine(x,z,s=1){V(x,.37*s,z,.13*s,.75*s,.13*s,'#775b45');for(let j=0;j<4;j++)V(x,(.65+j*.28)*s,z,(1.05-j*.2)*s,.38*s,(1.05-j*.2)*s,['#2d6159','#397463','#4e8972','#729a79'][j]);}
+function person(x,z,c='#e3af58',rot=0){V(x,.085,z-.055,.065,.17,.065,'#31404e','solid',rot);V(x,.085,z+.055,.065,.17,.065,'#31404e','solid',rot);V(x,.255,z,.15,.19,.16,c,'solid',rot);V(x,.407,z,.115,.115,.12,'#d5a17d','solid',rot);}
+function cone(x,z){V(x,.035,z,.2,.07,.2,'#ded4b8');V(x,.13,z,.105,.15,.105,'#eb7f39');V(x,.2,z,.08,.035,.08,'#fff0cc');}
+function planter(x,z,w=1.4){V(x,.16,z,w,.32,.7,'#d9c6a5');V(x,.34,z,w-.12,.12,.58,'#619174');for(let i=0;i<6;i++)V(x-w*.4+i*w*.16,.45,z+(rnd()-.5)*.3,.12,.12,.12,i%2?'#eab661':'#dc8e86');}
+function rooftop(x,z,w,d,h){for(let i=0;i<Math.max(1,Math.floor(w/2));i++){V(x-w*.3+i*1.6,h+.15,z,.64,.3,.7,'#a6ae9f');for(let j=0;j<3;j++)V(x-w*.3+i*1.6,h+.305,z-.22+j*.2,.47,.017,.045,'#5b7472');}}
+function building(x,z,w,d,h,color,name,opt={}){
+ V(x,h/2,z,w,h,d,color);V(x,h+.07,z,w+.15,.14,d+.15,opt.roof||'#f0e5c9');block(x,z,w+.15,d+.15,h+.15,0,name);
+ if(opt.windows!==false){const rows=Math.max(1,Math.floor(h/.65)),cols=Math.max(1,Math.floor(w/.5));for(let r=0;r<rows;r++)for(let q=0;q<cols;q++){const xx=x-w*.5+(q+.5)*w/cols,yy=.35+r*(h-.35)/rows;V(xx,yy,z+d/2+.018,w/cols*.63,.3,.03,'#88abb0','glass');V(xx,yy,z-d/2-.018,w/cols*.63,.3,.03,'#779b9d','glass');}for(let r=0;r<rows;r++)for(let q=0;q<Math.floor(d/.6);q++)V(x+w/2+.018,.35+r*(h-.35)/rows,z-d/2+.3+q*.6,.03,.3,.34,'#85a5a7','glass');}
+ if(opt.hvac!==false)rooftop(x,z,w,d,h+.15);
+ if(name&&opt.sign!==false)label(name,x,Math.max(.65,h*.65),z+d/2+.04,w*.85,Math.min(.65,h*.35),{bg:opt.signColor||'#204e56',size:52});
+}
+// ─────────────────────── 实体展桌与房间 ───────────────────────
+function woodTexture(){const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d');g.fillStyle='#95683e';g.fillRect(0,0,1024,512);for(let i=0;i<1800;i++){const y=rnd()*512;g.strokeStyle=`rgba(${rnd()>.45?'55,31,15':'239,185,112'},${.03+rnd()*.11})`;g.lineWidth=.5+rnd()*2;g.beginPath();g.moveTo(0,y);for(let x=0;x<=1024;x+=32)g.lineTo(x,y+Math.sin(x*.009+y)*2+Math.sin(x*.034+y)*.6);g.stroke();}for(let y=0;y<512;y+=128){g.fillStyle='rgba(56,36,25,.17)';g.fillRect(0,y,1024,2);}const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(3,2);t.anisotropy=8;return t;}
+const wood=new T.MeshStandardMaterial({map:woodTexture(),roughness:.42,metalness:.02});
+meshBox(scene,72,1.35,50,0,0,G-1.125,0,wood);
+const roomB=new Batch(scene);
+roomB.box(0,G-2.6,23.15,67,2.15,.6,'#724b30');roomB.box(0,G-2.6,-23.15,67,2.15,.6,'#724b30');
+for(const x of [-31.4,31.4])for(const z of [-20.7,20.7]){roomB.box(x,(G-1.8)/2,z,2.1,G-1.8,2.1,'#745236');roomB.box(x,.2,z,2.22,.4,2.22,'#3a4442','metal');}
+for(const x of[-31.4,31.4])roomB.box(x,2.5,0,1.0,.9,42,'#785334');roomB.box(0,2.5,-20.7,63,.9,1,'#785334');
+roomB.box(0,-.28,0,210,.5,175,'#a39b87');
+for(let x=-90;x<100;x+=5){roomB.box(x,-.013,9,.026,.012,155,'#8e8777');for(let z=-65;z<85;z+=14)roomB.box(x+2.5,-.007,z+(Math.floor(x/5)%2)*7,4.97,.01,.024,'#948b7c');}
+roomB.box(0,30,-43,210,60,.7,'#c9c5b2');roomB.box(-85,30,0,.7,60,86,'#adb9b0');
+roomB.box(0,1.0,-42.5,210,2,.28,'#89998d');roomB.box(0,2.2,-42.35,210,.12,.34,'#ded7bf');
+// 房间的三扇大窗；天空直接由着色器计算。
+const skyUniforms={top:{value:new T.Color('#63adc9')},bottom:{value:new T.Color('#e5f1e4')},time:{value:0},night:{value:0}};
+const skyMat=new T.ShaderMaterial({uniforms:skyUniforms,side:T.DoubleSide,vertexShader:'varying vec2 uv0; void main(){uv0=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`varying vec2 uv0; uniform vec3 top; uniform vec3 bottom; uniform float time; uniform float night;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){vec3 c=mix(bottom,top,smoothstep(0.,1.,uv0.y));float clouds=step(.77,sin(uv0.x*17.+time*.017)+.32*sin(uv0.x*39.-time*.009))*smoothstep(.24,.27,uv0.y)*(1.-smoothstep(.29,.32,uv0.y));c=mix(c,vec3(.91,.94,.88),clouds*.19*(1.-night));vec2 cell=floor(uv0*vec2(160.,90.));vec2 f=fract(uv0*vec2(160.,90.))-.5;float star=step(.995,hash(cell))*step(length(f),.105)*night;c+=star*.7;gl_FragColor=vec4(c,1.);
+#include <tonemapping_fragment>
+#include <colorspace_fragment>
+}`});
+for(let x of [-48,0,48]){const panel=new T.Mesh(new T.PlaneGeometry(39,24),skyMat);panel.position.set(x,31,-42.58);scene.add(panel);for(const xx of [x-20,x+20])roomB.box(xx,31,-42,1.0,26,.8,'#737f76');for(const yy of [18.5,43.5])roomB.box(x,yy,-42,41,1,.8,'#737f76');roomB.box(x,31,-41.8,.65,25,1,'#a4aea1');roomB.box(x,31,-41.8,40,.5,1,'#a4aea1');roomB.box(x,18,-41.2,42,.5,2.3,'#eee4c9');}
+label('THE BAY AREA',-30,13,-42.3,20,2.3,{fg:'#435c57',size:74,weight:'600'},scene);
+label('IN MINIATURE   /   EXHIBIT 07',-30,10.6,-42.25,15,1.0,{fg:'#65736b',size:44,weight:'500'},scene);
+label('A LITTLE WORLD.\nALWAYS IN MOTION.',30,11.8,-42.25,18,3.6,{fg:'#526963',size:60,weight:'600'},scene);
+roomB.flush();
+// 分层土地基座，保留显眼的木质桌沿。
+V(0,-.3,0,68,.6,46,'#d3bd8c');V(-5.4,-.105,0,57.2,.21,46,'#a8b193');V(28.8,-.065,0,10.4,.25,46,'#2c8091');
+V(0,-.34,23.03,68,.28,.16,'#355e5e');
+const waterSurface=new T.Mesh(new T.PlaneGeometry(10.5,46),M.water);waterSurface.rotation.x=-PI/2;waterSurface.position.set(28.75,.068,0);model.add(waterSurface);
+for(let i=0;i<250;i++){const x=24+rnd()*9.7,z=-22.7+rnd()*45.4;V(x,.076,z,.1+rnd()*.9,.009,.035,'#70afb3');}
+for(let z=-22.5;z<23;z+=.45){V(23.4+rnd()*.28,.14,z,.38+rnd()*.18,.28,.36,'#b5b29a');}
+// ─────────────────────── 跑道与受保护滑行走廊 ───────────────────────
+function runway(z,name){
+ V(-4.6,.018,z,49.2,.09,3.05,'#d5d2b6');V(-4.6,.075,z,48.5,.025,2.65,'#414e51');
+ for(const side of[-1,1])line([-28.7,z+side*1.13],[19.5,z+side*1.13],.052,'#ebe8d7',.097);
+ for(let x=-24.5;x<17;x+=2.9)V(x,.097,z,1.35,.014,.052,'#eeeada');
+ for(let end of[-27.7,18.3]){for(let j=0;j<6;j++){for(const sign of[-1,1])V(end,.10,z+sign*(.22+j*.13),1.3,.016,.075,'#f5efd8');}}
+ for(let x of[-21.8,12.6])for(let sign of[-1,1])V(x,.1,z+sign*.68,.85,.015,.28,'#eeeada');
+ label('28'+name,-25.2,.105,z,1.95,1.17,{fg:'#fff4db',ground:true,size:90,pad:1});label('10'+name,15.6,.105,z,1.95,1.17,{fg:'#fff4db',ground:true,size:90,pad:1}).rotation.z=PI;
+ for(let x=-28.9;x<=19.7;x+=1.23)for(let s of[-1,1])V(x,.17,z+s*1.32,.07,.085,.07,'#ffffff','white');
+ for(let j=-5;j<=5;j++){V(-29,.17,z+j*.2,.09,.08,.08,'#ffffff','green');V(19.75,.17,z+j*.2,.09,.08,.08,'#ffffff','red');}
+ for(let x=-31;x<-29.5;x+=.45)for(let j=-1;j<=1;j++)V(x,.15,z+j*.3,.065,.07,.065,'#ffffff','white');
+ sign('28'+name+'  •  '+(name==='L'?'DEPARTURES':'ARRIVALS'),-21,z+2.85,3.3,.46,.28,'#71423a');
+}
+runway(-4.8,'L');runway(-11.5,'R');
+// 两条跑道分别由一架飞机独占，不共享起降跑道。
+V(-4.5,.04,1.1,49.2,.08,5.6,'#858d80');
+V(-4.5,.085,1.1,48.4,.012,4.4,'#68746e');
+line([-26,-.5],[19,-.5],.042,'#e9bf57',.105);line([-26,2.7],[19,2.7],.042,'#e9bf57',.105);
+for(let x=-27;x<21;x+=1.5)for(let z of[-1.05,3.25])V(x,.16,z,.055,.07,.055,'#ffffff','blue');
+// 连接道是可视布局；移动飞机只走下面明确定义的独立线路。
+for(let x of[-26,-16,8,18]){V(x,.061,-2.7,1.2,.018,2.85,'#65736d');line([x,-4.25],[x,-.7],.043,'#deb85c',.104);for(let zz of[-1.55,-1.72])line([x-.5,zz],[x+.5,zz],.052,'#f4cc61',.12);}
+for(let x of[-27.0,17.7]){V(x,.027,-8.2,1.15,.016,3.8,'#758177');line([x,-10.7],[x,-6.1],.04,'#d9b96b',.064);}
+V(.3,.033,7.78,30.5,.075,7.72,'#bdc0aa');
+for(let x=-13.9;x<15.6;x+=2.1)line([x,4.02],[x,11.4],.016,'#a2a995',.08);
+for(let z=4.2;z<11.5;z+=1.35)line([-14.85,z],[15.5,z],.016,'#a2a995',.08);
+for(let x of[-10,-3,4,11]){line([x,4.55],[x,9.4],.045,'#d7a34d',.1);line([x-.65,9.28],[x+.65,9.28],.055,'#d7a34d',.1);label('G'+String((x+10)/7+1).padStart(2,'0'),x,.11,4.65,1.0,.43,{ground:true,fg:'#817b5e',size:52,pad:2});}
+road(0,10.46,29.4,1.43);roadDashes(-14,14,10.46,.11,1.0);
+// ─────────────────────── 湾区城市、山丘、桥梁 ───────────────────────
+for(let i=0;i<8;i++){const x=-30+i*1.9,z=-19.5+(i%2)*.7,s=2.0+rnd()*1.2;for(let j=0;j<4;j++)V(x,j*.43+.15,z,s*2-j*.75,.5,5.3-j*.9,['#8d997b','#829779','#789177','#799778'][j]);}
+for(let i=0;i<44;i++)pine(-32+rnd()*16,-22.3+rnd()*5.3,.65+rnd()*.45);
+road(20,-17.1,1.3,3.5);road(22.3,3.3,1.12,35.5);road(2.1,-15.3,37.8,1.25);roadDashes(-16,20.5,-15.3);
+const cityColors=['#c8b997','#adc0b2','#86a7a5','#d7c9ad','#baad97','#95b4b1'];
+for(let i=0;i<10;i++){const x=-13+i*3.4;const h=1.5+rnd()*3.4;building(x,-21,2.25,2.5,h,cityColors[i%6],'',{sign:false});}
+for(let i=0;i<9;i++){if(i===2||i===5)continue;const x=-12+i*3.65;building(x,-17.85,2.3,2.45,1.25+rnd()*2.3,cityColors[(i+2)%6],'',{sign:false});}
+// 阶梯状的金字塔地标，非真实建筑复刻。
+for(let j=0;j<15;j++){const w=2.15-j*.126;V(-4.7,.23+j*.43,-17.8,w,.45,w,'#dfd6b7');for(let s of[-1,1])V(-4.7,.3+j*.43,-17.8+s*(w/2+.012),w*.65,.19,.025,'#9ab4b2','glass');}V(-4.7,7.03,-17.8,.075,.8,.075,'#eee5c9');block(-4.7,-17.8,2.2,2.2,7.45,0,'pyramid');
+for(let j=0;j<13;j++){let w=j<9?2.65:2.65-(j-8)*.32;V(6.3,.28+j*.47,-18.3,w,.46,2.0,'#94b9bc');for(let s of[-1,1])V(6.3,.31+j*.47,-18.3+s*1.009,w*.86,.23,.027,'#aacaca','glass');}block(6.3,-18.3,2.7,2.1,6.3,0,'bay tower');
+for(let x=-15;x<21;x+=3.7){lamp(x,-16.2,1.5);tree(x+.65,-16.25,.65);}
+label('DOWNTOWN  /  THE BAY',5,.1,-14.28,7,.48,{ground:true,fg:'#e2e2c8',size:52,pad:2});
+const bridgeZ=-18.7,deckY=2.6;
+V(28,deckY,bridgeZ,12.1,.37,1.85,'#8b6c60');V(28,deckY+.2,bridgeZ,12.1,.025,1.64,'#526668');
+for(let s of[-1,1]){V(28,deckY+.44,bridgeZ+s*.91,12.2,.18,.11,'#c77955');for(let x=22.2;x<=33.9;x+=.48)V(x,deckY+.56,bridgeZ+s*.91,.055,.22,.055,'#c77955');}
+roadDashes(22.1,33.7,bridgeZ,deckY+.221,.8);
+for(let x of[25.1,31.7]){for(let s of[-1,1]){V(x,2.9,bridgeZ+s*1.05,.47,5.8,.42,'#c45f40');V(x,.24,bridgeZ+s*1.05,.9,.5,.88,'#bea985');V(x,6,bridgeZ+s*1.05,.65,.26,.56,'#d98358');block(x,bridgeZ+s*1.05,.5,.45,6.15,0,'bridge tower');}for(let yy of[4.6,5.55])V(x,yy,bridgeZ,.39,.26,2.2,'#c96646');}
+for(let s of[-1,1])for(let x=22.1;x<33.9;x+=.21){const y=2.98+2.75*Math.pow(Math.cos((x-25.1)/6.6*PI),2);V(x,y,bridgeZ+s*1.08,.23,.09,.1,'#d88158');if(Math.round((x-22.1)/.21)%3===0){V(x,(y+deckY+.3)/2,bridgeZ+s*1.08,.045,y-deckY-.3,.045,'#d89068');V(x,deckY+.66,bridgeZ+s*.96,.065,.08,.065,'#ffffff','city');}}
+// 桥头的独立上坡段，车辆有自己的高架往返路线。
+beam(B,new T.Vector3(20.0,.13,bridgeZ),new T.Vector3(22.0,deckY,bridgeZ),1.0,'#918477',1.8);
+// ─────────────────────── 航站楼、廊桥、塔台 ───────────────────────
+building(.5,13.3,25,3.4,2.05,'#e3ddc3','',{windows:false,hvac:false});
+for(let x=-11.4;x<13;x+=1.45){V(x,1.34,11.58,1.12,1.21,.075,'#80aeb4','glass');V(x,1.29,15.02,1.12,1.14,.075,'#7ca6aa','glass');V(x-.64,1.3,11.48,.13,1.5,.28,'#c0bda8');}
+// 大屋顶与略高的中央大厅。
+V(.5,2.2,13.3,25.6,.25,3.85,'#f4e9cc');
+for(let i=0;i<8;i++){const x=-10.5+i*3.2;V(x,2.47,13.25,2.25,.31,3.2,'#aac5bb');V(x,2.65,13.25,2.0,.07,2.6,'#96bfc0','glass');}
+V(.5,2.91,13.3,6.0,1.1,3.1,'#deceb0');V(.5,3.49,13.3,6.5,.19,3.65,'#f4e7c5');
+V(.5,3.03,15.0,5.5,.62,.07,'#8cbfc3','glass');
+label('BAYPORT INTERNATIONAL',.5,2.92,15.075,5.9,.59,{bg:'#28575c',fg:'#f3e5c5',size:56});
+label('BPI',.5,3.72,13.3,3.05,1.05,{ground:true,fg:'#547f7a',size:100,pad:4});
+block(.5,13.3,6.5,3.65,3.58,0,'terminal central hall');
+for(let x of[-11.5,12.5]){planter(x,15.6,1.9);lamp(x,15.8,1.4);}
+for(let i=0;i<28;i++)person(-10.8+rnd()*22,15.3+rnd()*.48,['#edc266','#bd7660','#57747a','#6c91a1'][i%4]);
+// 控制塔的八边形感觉用阶梯体块构成。
+V(-18,3.05,7.3,1.12,6.1,1.12,'#d4c6a5');V(-18,.2,7.3,2.55,.4,2.5,'#d0c2a2');V(-18,5.75,7.3,2.5,.36,2.2,'#ddd4b8');
+V(-18,6.29,7.3,2.25,.8,2.05,'#58898d','glass');V(-18,6.76,7.3,2.65,.19,2.4,'#e7ddbd');
+for(let x of[-18.85,-18,-17.15])V(x,6.27,8.35,.095,.82,.08,'#e0d4b2');
+V(-18,7.15,7.3,.11,.68,.11,'#87998c');block(-18,7.3,2.65,2.4,7.5,0,'control tower');
+label('BPI',-18,5.0,7.87,.88,.48,{fg:'#4f7774',size:72});
+const radar=new T.Group();radar.position.set(-18,7.65,7.3);model.add(radar);const rb=new Batch(radar);rb.box(0,0,0,1.3,.1,.2,'#d5bb84');rb.box(0,.22,0,1.15,.42,.12,'#477e80');for(let i=-2;i<=2;i++)rb.box(i*.22,.22,.08,.05,.43,.04,'#a4d0c1');rb.flush();
+// 维修机库是三面墙和屋顶，飞机实际停在空的内部，而不是实心建筑中。
+V(-26,.045,9,8.0,.09,5.3,'#a6ad99');
+for(let x of[-29.85,-22.15]){V(x,1.72,9,.3,3.44,5.0,'#a4b1a8');block(x,9,.3,5.0,3.44,0,'hangar side');}
+V(-26,1.72,11.45,7.5,3.44,.3,'#b6bfb1');block(-26,11.45,7.5,.3,3.44,0,'hangar back');
+V(-26,3.52,9,8.2,.22,5.55,'#e2d8ba');block(-26,9,8.2,5.55,.22,3.41,'hangar roof');
+for(let i=0;i<10;i++)V(-29.55+i*.79,3.68,9,.12,.12,5.1,'#bac6b6');
+label('PACIFIC  /  MRO',-26,3.18,6.47,5.9,.55,{bg:'#35656a',fg:'#f4e6c5',size:55});
+V(-29.18,1.3,6.48,.9,2.5,.13,'#7d9188');V(-22.82,1.3,6.48,.9,2.5,.13,'#7d9188');
+for(let x of[-28.6,-26,-23.4])V(x,3.29,8.8,.8,.05,.2,'#ffffff','city');
+building(-26,14.0,8,2.55,1.8,'#bbae8f','BAY CARGO',{windows:false,signColor:'#5b6f61'});
+for(let x=-29.2;x<-22.6;x+=1.6){V(x,.57,12.69,1.15,1.1,.07,'#667a72');V(x,.09,12.3,1.25,.18,.75,'#ccc4a9');}
+// 独立燃油区，与飞机滑行路径和消防通道分离。
+V(-19.8,.05,12.7,3.5,.12,4.0,'#bab89c');
+for(let z of[11.6,13.7])for(let x of[-20.7,-18.85]){V(x,.78,z,1.25,1.55,1.2,'#dcd4b8');V(x,1.58,z,1.1,.15,1.08,'#ebdfc1');V(x,1.78,z,.15,.28,.15,'#8b9b8b');block(x,z,1.3,1.3,1.95,0,'fuel tank');}
+for(let z of[10.65,14.77]){V(-19.8,.55,z,3.85,.05,.035,'#8f9c82');for(let x=-21.6;x<-17.8;x+=.6)V(x,.35,z,.045,.7,.045,'#8c9883');}
+sign('FUEL  •  NO SMOKING',-19.8,14.9,2.7,.4,.6,'#8b5843');
+for(let i=0;i<12;i++){const x=-29.5+(i%6)*1.15,z=15.66+Math.floor(i/6)*.45;V(x,.18,z,.75,.36,.35,['#bb9164','#d5b47e','#748e80'][i%3]);}
+// 通航区。
+V(19,.02,8.0,6.6,.08,6.4,'#bbc0a8');
+building(18.9,14.1,5.2,2.65,1.65,'#d5c8a6','GENERAL AVIATION',{roof:'#e8dfbd'});
+for(let x of[17,20.5]){line([x,5.7],[x,9.6],.04,'#e1b355',.09);line([x-.7,9.2],[x+.7,9.2],.04,'#e1b355',.09);}
+// ─────────────────────── 美式街区、停车、轻轨、消防站 ───────────────────────
+road(-4.4,21.9,56.8,2.05);roadDashes(-32.2,23.1,21.9);
+for(let x=-31;x<23;x+=4.3){lamp(x,23.0,1.4);}
+// 停车楼：层板之间是真实空隙，而不是贴一整块停车纹理。
+V(-9.0,.1,19.05,7.2,.2,3.25,'#b4b69e');
+for(let h of[.12,.93,1.75]){V(-9,h,19.05,7.2,.13,3.25,'#c7c4a9');for(let x of[-12.35,-9,-5.65])for(let z of[17.56,20.54])V(x,h+.35,z,.18,.69,.18,'#bdbea7');}
+for(let z of[17.48,20.62])V(-9,1.88,z,7.2,.16,.09,'#ddd2b0');
+block(-9,19.05,7.25,3.3,1.99,0,'parking garage');
+label('P',-9,1.13,20.72,.68,.65,{fg:'#f8ebc5',bg:'#476c65',size:86,pad:6});
+building(-1.0,19.05,5.5,3.0,1.3,'#e2d0a6','RENT A CAR',{signColor:'#ad7847',windows:false});
+for(let x=-3.3;x<1.4;x+=.72)V(x,.74,20.58,.52,.61,.04,'#729c9a','glass');
+building(6.0,19.05,4.0,3.1,3.7,'#d5ba97','BAYVIEW HOTEL',{signColor:'#7d624e'});
+V(6,3.94,19.05,4.3,.28,3.4,'#e9d6b1');
+planter(9.0,19.2,1.5);tree(9.4,20.2,.9);
+V(13.5,.04,19.2,6.9,.1,3.0,'#aeb89d');
+for(let x of[10.55,16.45])tree(x,20.2,.8);
+// 静态展示机坪。
+V(13.6,.21,19.3,3.45,.33,2.3,'#d8caaa');label('FIRST FLIGHT  /  1936',13.6,.65,20.5,2.75,.4,{bg:'#4d706c',fg:'#eaddb7',size:44});
+// 消防站空心车库。
+for(let x of[-20.45,-15.95]){V(x,1.0,19.07,.24,2,2.95,'#b56e4d');block(x,19.07,.24,2.95,2,0,'firehouse wall');}
+V(-18.2,1,20.48,4.5,2,.18,'#b56e4d');block(-18.2,20.48,4.5,.18,2,0,'firehouse rear');
+V(-18.2,2.06,19.05,4.9,.18,3.25,'#e0cdac');block(-18.2,19.05,4.9,3.25,.18,1.97,'firehouse roof');
+label('AIRPORT FIRE • 07',-18.2,1.72,17.55,4.15,.44,{bg:'#855748',size:47});
+for(let x of[-19.63,-17.93,-16.23])V(x,1.65,17.55,.1,.62,.1,'#e4c69e');
+road(-15.0,11.65,.9,11.8);road(-16.6,16.1,3.95,.85);road(-17.85,17.22,.85,2.95);
+line([-15,6.0],[-15,15.9],.03,'#cfb775');
+for(let x of[-30.85,-27.5,-24.15]){
+ for(let z of[17.1,20.0]){
+  const color=['#e1c591','#c7d1b0','#d6ad8b'][Math.floor(rnd()*3)];V(x,.47,z,1.9,.94,1.55,color);V(x,.99,z,2.15,.15,1.75,'#8d6f56');V(x,1.17,z,1.72,.2,1.4,'#987953');V(x,1.36,z,1.15,.2,1.05,'#a98860');V(x,1.51,z,.55,.16,.75,'#ae8e66');
+  V(x,.5,z+.786,.28,.6,.03,'#6f8f85');for(let dx of[-.61,.57])V(x+dx,.61,z+.787,.34,.28,.035,'#b6dbcb','glass');V(x-.5,1.58,z-.23,.19,.55,.22,'#c09875');block(x,z,2.2,1.8,1.9,0,'suburban house');
+  tree(x+1.14,z+.4,.55);
+ }
+}
+road(-27.5,18.56,9.5,.76);roadDashes(-32.2,-22.9,18.56,.06,.95);
+sign('US 101  →  SAN FRANCISCO',-9.0,23.0,5.0,.62,1.2,'#2e6455');
+sign('BAYPORT  •  TERMINALS 1–4',3.0,23.05,4.7,.6,1.1,'#36645c');
+// 高架轻轨，两条相互隔开的站台，列车有往返闭锁。
+for(let x=-20;x<=18;x+=4.75){const px=Math.abs(x+15.25)<.01?-13.8:x;V(px,1.08,16.7,.35,2.16,.54,'#c1bc9e');V(px,2.19,16.7,.85,.2,1.2,'#c9c5ac');}
+V(-1,2.34,16.7,40,.2,1.35,'#b8bca5');
+for(let z of[16.38,17.02]){V(-1,2.47,z,40,.06,.055,'#8b9990','metal');}
+for(let x=-20.7;x<=18.5;x+=.33)V(x,2.45,16.7,.1,.035,.95,'#a3aa96');
+for(let x of[-6.5,15]){V(x,2.32,15.68,4.8,.2,.98,'#dacaaa');V(x,3.45,15.66,5.15,.16,1.14,'#e6d8b4');for(let xx of[x-2,x+2])V(xx,2.88,15.65,.08,1.1,.08,'#7c9589');label('BAYLINK',x,3.18,16.28,2.8,.4,{bg:'#3b7b7d',size:54});for(let i=0;i<8;i++){const xx=x-1.8+i*.49;V(xx,2.57,15.62,.13,.31,.13,'#d6a16f');V(xx,2.78,15.62,.11,.11,.11,'#b88565');}}
+// ─────────────────────── 港口与货柜 ───────────────────────
+V(25.2,.16,16.65,3.6,.44,12.4,'#b9b59a');V(26.9,.44,16.65,.18,.16,12.6,'#d7c69e');
+for(let z=10.7;z<22.5;z+=1.6)V(26.96,.14,z,.18,.44,.42,'#566565');
+const containerColors=['#cd8154','#497c82','#d6b15d','#708d78','#b5654f'];
+for(let z of[16.7,19.0,21.35])for(let k=0;k<2;k++){let x=25.5;V(x,.85+k*.7,z,1.45,.66,1.8,containerColors[(Math.round(z)+k)%5]);for(let xx=x-.57;xx<x+.7;xx+=.23)V(xx,.86+k*.7,z+.916,.04,.57,.025,'#d0b390');}
+// 门式岸桥的腿避开地面运输车道 x=23.8。
+for(let z of[11.7,13.6]){for(let x of[25.1,26.4]){V(x,2.66,z,.22,5.3,.25,'#e1b457');block(x,z,.23,.26,5.4,0,'port crane leg');}V(25.75,5.23,z,1.85,.27,.4,'#e6bc66');}
+V(28,5.52,12.65,6.4,.33,.45,'#d8ae58');V(25.7,5.83,12.65,1.3,.4,1.24,'#e5c679');V(25.6,5.88,13.3,.65,.43,.09,'#79a5a2','glass');
+const crane=new T.Group();crane.position.set(28.2,5.35,12.65);model.add(crane);const cb=new Batch(crane);cb.box(0,0,0,.64,.21,.7,'#527b7b');cb.box(0,-.52,0,.035,.93,.035,'#73827a');cb.box(0,-1.06,0,.6,.14,.42,'#d9ba71');cb.flush();
+const ship=new T.Group();ship.position.set(30.05,.2,18.1);model.add(ship);const sb=new Batch(ship);sb.box(0,.27,0,2.0,.62,7.5,'#395969');sb.box(0,.08,-3.97,1.5,.3,.45,'#395969');sb.box(0,.55,0,2.05,.15,7.4,'#babeaa');sb.box(0,1.12,2.8,1.6,1.15,1.4,'#ecdfbd');sb.box(0,1.8,2.95,1.7,.3,1.4,'#e5d3aa');sb.box(0,1.62,3.67,1.36,.21,.04,'#699297','glass');
+for(let z of[-2.65,-.7,1.2])for(let x of[-.47,.47])for(let h=0;h<2;h++)sb.box(x,.99+h*.64,z,.87,.6,1.65,containerColors[(Math.floor(z+4)+h+Math.floor(x+1))%5]);sb.flush();
+label('PORT OF THE BAY',25.1,.86,22.8,3.25,.45,{bg:'#325a61',fg:'#ebddbd',size:44});
+// 水域航行路线与停泊货轮、桥墩完全分离。
+// 美国国旗：所有条纹与星星由 Canvas 在内存绘制。
+function flagTexture(){const c=document.createElement('canvas');c.width=380;c.height=200;const g=c.getContext('2d');for(let i=0;i<13;i++){g.fillStyle=i%2?'#f5eddc':'#bb5b52';g.fillRect(0,i*200/13,380,200/13+1);}g.fillStyle='#355776';g.fillRect(0,0,152,200*7/13);g.fillStyle='#fff5db';for(let r=0;r<9;r++)for(let j=0;j<(r%2?5:6);j++){const x=13+j*25+(r%2?12.5:0),y=7+r*11.8;g.beginPath();for(let k=0;k<10;k++){const a=-PI/2+k*PI/5,rr=k%2?1.4:3.6;g.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}g.closePath();g.fill();}const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;return t;}
+const flags=[];const flagMat=new T.MeshStandardMaterial({map:flagTexture(),side:T.DoubleSide,roughness:.85});
+for(const [x,z,h] of[[-13.2,15.5,3.9],[18.1,-16.2,2.8]]){V(x,h/2,z,.06,h,.06,'#bdbf9c','metal');const geo=new T.PlaneGeometry(1.5,.79,15,3);const m=new T.Mesh(geo,flagMat);m.position.set(x+.75,h-.5,z);model.add(m);flags.push(m);}
+// 风向袋：分节关节而非外部模型。
+V(-31.1,1.18,-.15,.075,2.36,.075,'#cbbf9e');const windsock=new T.Group();windsock.position.set(-31.1,2.32,-.15);model.add(windsock);const wb=new Batch(windsock);for(let i=0;i<6;i++)wb.box(.12+i*.16,-i*.014,0,.17,.27-i*.026,.27-i*.026,i%2?'#efedd7':'#d98248');wb.flush();
+// 机场边界低围栏，不横跨任何活动路径。
+for(let x=-30.8;x<20.8;x+=1.1){V(x,.31,-14.15,.035,.62,.035,'#929b82');V(x+.52,.42,-14.15,1.08,.025,.025,'#9ba58f');}
+for(let i=0;i<22;i++){const x=-12+rnd()*26,z=8.5+rnd()*.7;if(Math.min(...[-10,-3,4,11].map(v=>Math.abs(v-x)))>2.05){person(x,z,'#e5bb4f');cone(x+.24,z+.23);}}
+for(let x of[-13.9,-6.7,.3,7.3,14.9]){lamp(x,9.48,1.8,true);for(let j=0;j<3;j++)V(x-.3+j*.19,.12,9.08,.14,.24,.23,['#ac8563','#517578','#d5b078'][j]);}
+for(let x of[-21,-14.2,16,21.7])for(let z of[5,10,15])cone(x,z);
+// 所有道路/绿化的最后一轮填充，禁止侵入跑道、廊桥或服务车道。
+for(let x of[-32,-30.7,-17.1,16.0,21.9])for(let z of[12.2,15.1]){if(x<-22||x>16)tree(x,z,.7);}
+for(let z of[-9.0,-5.0,0,4.5,8.6])lamp(22.5,z,1.65);
+B.flush();
+// 夜间光晕：一张在内存生成的径向渐变，四组实例化灯晕。
+const glowCanvas=document.createElement('canvas');glowCanvas.width=glowCanvas.height=64;
+const glowContext=glowCanvas.getContext('2d'),radial=glowContext.createRadialGradient(32,32,0,32,32,32);
+radial.addColorStop(0,'rgba(255,255,255,0.95)');radial.addColorStop(.16,'rgba(255,255,255,0.42)');radial.addColorStop(.48,'rgba(255,255,255,0.10)');radial.addColorStop(1,'rgba(255,255,255,0)');glowContext.fillStyle=radial;glowContext.fillRect(0,0,64,64);
+const glowTexture=new T.CanvasTexture(glowCanvas),haloMaterials=[];
+function halos(points,color,size){const mat=new T.MeshBasicMaterial({map:glowTexture,color,transparent:true,opacity:0,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false});const inst=new T.InstancedMesh(new T.PlaneGeometry(1,1),mat,points.length);let i=0;for(const p of points){temp.position.set(p[0],.122,p[1]);temp.rotation.set(-PI/2,0,0);temp.scale.set(size,size,1);temp.updateMatrix();inst.setMatrixAt(i++,temp.matrix);}inst.instanceMatrix.needsUpdate=true;inst.computeBoundingSphere();model.add(inst);haloMaterials.push(mat);}
+const whiteHalos=[],blueHalos=[],greenHalos=[],redHalos=[];
+for(const z of[-4.8,-11.5]){for(let x=-28.9;x<=19.7;x+=1.23)for(const sign of[-1,1])whiteHalos.push([x,z+sign*1.32]);for(let j=-5;j<=5;j++){greenHalos.push([-29,z+j*.2]);redHalos.push([19.75,z+j*.2]);}}
+for(let x=-27;x<21;x+=1.5)for(let z of[-1.05,3.25])blueHalos.push([x,z]);
+halos(whiteHalos,'#ffe5a6',.54);halos(blueHalos,'#4cb8ff',.48);halos(greenHalos,'#7bffc0',.40);halos(redHalos,'#ff7050',.40);
+// ─────────────────────── 体素航空器：局部 +X 为机头 ───────────────────────
+const propellers=[], aircraft=[];
+function plane(kind,paint,scale=1){
+ const group=new T.Group(), solid=new Batch(group);model.add(group);group.scale.setScalar(scale);
+ const wide=kind==='wide'||kind==='cargo', small=kind==='prop'||kind==='display', biz=kind==='business';
+ const length=wide?5.4:small?3.0:biz?3.6:4.5, wing=wide?4.9:small?3.7:biz?3.5:4.1;
+ const radius=wide?.38:small?.23:biz?.25:.31, cy=wide?.83:small?.59:biz?.66:.73;
+ const body=kind==='cargo'?'#eee4cf':'#f3efdb', belly=kind==='display'?'#d4aa55':'#d4d8c8';
+ // 阶梯鼻锥、方形机身和逐级收窄的尾段。
+ solid.box(-.15,cy,0,length*.66,radius*1.64,radius*2,body);
+ solid.box(.05,cy+radius*.81,0,length*.57,.13,radius*1.62,'#fff8e5');
+ solid.box(.02,cy-radius*.75,0,length*.62,.16,radius*1.68,belly);
+ const nose=length*.4;
+ solid.box(nose-.07,cy-.014,0,length*.2,radius*1.38,radius*1.72,body);
+ solid.box(length*.495,cy-.07,0,.23,radius*.92,radius*1.2,body);
+ solid.box(length*.535,cy-.09,0,.14,radius*.56,radius*.77,body);
+ solid.box(-length*.405,cy+.005,0,length*.22,radius*1.23,radius*1.53,body);
+ solid.box(-length*.49,cy+.04,0,length*.15,radius*.9,radius*.97,paint);
+ // 驾驶舱可见前窗与两侧窗。
+ solid.box(length*.365,cy+radius*.58,0,.37,.13,radius*1.6,'#2c5767');
+ solid.box(length*.452,cy+radius*.30,0,.13,.14,radius*1.19,'#34596b');
+ for(const side of[-1,1]){
+  solid.box(-.05,cy-.08,side*(radius+.01),length*.65,.12,.022,paint);
+  if(kind!=='cargo')for(let x=-length*.29;x<length*.23;x+=small?.27:.215)solid.box(x,cy+.15,side*(radius+.024),.095,.11,.027,'#51808a','glass');
+  else {for(let x of[-length*.18,length*.17])solid.box(x,cy+.09,side*(radius+.024),.48,.46,.03,'#d7d6c3');}
+  // 三段后掠翼，拼接成清晰的体素轮廓。
+  const sign=side;
+  solid.box(-.13,cy-.22,sign*(radius+.43),1.42,.11,.93,'#d9dfd2');
+  solid.box(-.49,cy-.20,sign*(radius+1.05),1.03,.09,.57,'#e8e7d6');
+  solid.box(-.79,cy-.16,sign*(wing/2-.16),.59,.075,.62,paint);
+  solid.box(-.95,cy+.02,sign*(wing/2+.12),.3,.34,.065,paint);
+  // 水平尾翼。
+  solid.box(-length*.41,cy+.21,sign*.57,.79,.08,.84,body);
+  solid.box(-length*.46,cy+.23,sign*.97,.43,.07,.25,paint);
+  // 主起落架：支柱、两个方形橡胶轮、轮毂。
+  solid.box(-.34,.28,sign*.4,.06,.36,.055,'#66746d','metal');
+  solid.box(-.34,.115,sign*.48,.25,.23,.16,'#334245');
+  solid.box(-.34,.115,sign*.57,.075,.08,.025,'#aeb5a4','metal');
+  // 发动机挂架与多段机舱。螺旋桨机采用独立双桨布局。
+  const ez=small?sign*1.03:sign*.92, ex=small?.34:.33, ey=cy-(small?.07:.45);
+  solid.box(ex,cy-.28,ez,.19,.19,.15,'#8eaa9e','metal');
+  solid.box(ex+.10,ey,ez,small?.48:.65,small?.29:.36,small?.28:.36,paint);
+  solid.box(ex+.44,ey,ez,.065,small?.25:.32,small?.24:.32,'#364e56');
+  solid.box(ex+.477,ey,ez,.028,.1,.10,'#849896','metal');
+  if(small){const pg=new T.Group();pg.position.set(ex+.49,ey,ez);const pb=new Batch(pg);pb.box(0,0,0,.055,.9,.065,'#3b4547');pb.box(0,0,0,.055,.065,.9,'#3b4547');pb.box(0,.42,0,.063,.06,.082,'#e2bd71');pb.box(0,-.42,0,.063,.06,.082,'#e2bd71');pb.flush();group.add(pg);propellers.push(pg);}
+  solid.box(-.99,cy+.20,sign*(wing/2+.135),.105,.08,.075,'#ffffff',side===1?'navGreen':'navRed');
+ }
+ solid.box(length*.29,.30,0,.06,.37,.06,'#6e7b71','metal');solid.box(length*.29,.1,0,.23,.20,.14,'#384747');
+ // 竖尾：层层递进而不是三角面片。
+ solid.box(-length*.40,cy+.56,0,1.0,.78,.14,paint);solid.box(-length*.48,cy+1.02,0,.65,.40,.13,paint);solid.box(-length*.53,cy+1.26,0,.34,.12,.12,paint);
+ solid.box(-length*.46,cy+.92,.076,.28,.15,.023,'#f0deb1');solid.box(-length*.46,cy+.92,-.076,.28,.15,.023,'#f0deb1');
+ solid.box(0,cy+radius+.08,0,.10,.07,.1,'#ffffff','beacon');solid.box(-length*.56,cy+.08,0,.1,.08,.075,'#ffffff','navWhite');
+ solid.flush();
+ // 机翼标记由 CanvasTexture 生成，不使用真实航空公司标志。
+ const brand=kind==='cargo'?'BAY FREIGHT':small?'PACIFIC':paint==='#d39054'?'GOLDEN WEST':'PACIFIC AIR';
+ if(!small){const tm=label(brand,-.05,cy+.01,radius+.04,length*.40,.15,{fg:paint,size:46,pad:4},group);tm.material.toneMapped=true;}
+ const localBounds=new T.Box3().setFromObject(group); // group 尚未移动，包含已应用的 scale。
+ const item={group,kind,length:2*Math.max(length*.535+.07,length*.53+.17,length*.565)*scale,span:(wing+.35)*scale,height:(cy+1.36)*scale,scale,bounds:localBounds};
+ aircraft.push(item);return item;
+}
+const departures=plane('narrow','#bd7651',.96);
+const arrivals=plane('wide','#487e8b',.94);
+const gatePlanes=[plane('wide','#467d80',.86),plane('narrow','#d39054',.88),plane('narrow','#73988a',.82),plane('narrow','#567e99',.87)];
+for(let i=0;i<4;i++){gatePlanes[i].group.position.set([-10,-3,4,11][i],.1,7.2);gatePlanes[i].group.rotation.y=-PI/2;}
+const cargoPlane=plane('cargo','#537a7b',.88);cargoPlane.group.position.set(-26,.1,8.50);cargoPlane.group.rotation.y=PI/2;
+const propPlane=plane('prop','#d39356',.67);propPlane.group.position.set(20.1,.1,8.4);propPlane.group.rotation.y=PI/2;
+const privateJet=plane('business','#596a81',.66);privateJet.group.position.set(17.15,.1,8.4);privateJet.group.rotation.y=PI/2;
+const displayPlane=plane('display','#bc8055',.56);displayPlane.group.position.set(13.6,.40,19.3);displayPlane.group.rotation.y=.16;
+const taxiPlanes=[plane('regional','#ab8d57',.55),plane('regional','#71908a',.54),plane('regional','#b57562',.51)];
+// 可伸缩登机桥；末端只接触机身侧面，车道从桥体下方通过。
+const jetbridges=[];
+for(let i=0;i<4;i++){
+ const x=[-10,-3,4,11][i],g=new T.Group();model.add(g);
+ const floor=meshBox(g,1,.12,.55,'#b8b6a0'),glass=meshBox(g,1,.37,.52,0,0,0,0,M.glass),roof=meshBox(g,1,.11,.65,'#e8ddbc');
+ const bridge={g,floor,glass,roof,x,index:i,phase:i*.8};jetbridges.push(bridge);
+ const pier=new Batch(model);pier.box(x-1.07,.48,11.36,.14,.96,.16,'#848e7b');pier.box(x-1.05,1.06,11.56,.66,.16,.42,'#c8c3a7');pier.flush();
+ label('G0'+(i+1),x-1.0,1.70,11.26,.56,.38,{bg:'#466d65',fg:'#f0d890',size:66,pad:5});
+}
+// ─────────────────────── 车辆、列车、船只 ───────────────────────
+const vehicleColors=['#d6b276','#cf8062','#678f90','#e2ddc7','#7b8a76','#7296a9','#baa281'];
+const movingActors=[];
+function vehicle(kind='car',color='#dcbd83',scale=1,parent=model){
+ const group=new T.Group();parent.add(group);group.scale.setScalar(scale);const b=new Batch(group);
+ const long=['bus','school','shuttle','catering'].includes(kind),truck=['fuel','fire','pickup','baggage','cargo','catering'].includes(kind), length=long?1.7:truck?1.35:1.04;
+ b.box(0,.24,0,length,.28,.48,color);b.box(.08,.44,0,long?length*.85:.60,.30,.43,color);
+ b.box(long?.73:.40,.48,0,.035,.2,.38,'#43616c');
+ for(const side of[-1,1]){if(long){for(let x=-.62;x<.78;x+=.24)b.box(x,.48,side*.222,.17,.17,.026,'#72959b','glass');}else b.box(.09,.48,side*.225,.46,.18,.025,'#668991');
+  for(const x of[-length*.31,length*.31]){b.box(x,.13,side*.261,.23,.25,.12,'#354448');b.box(x,.13,side*.327,.085,.085,.024,'#9aa99b','metal');}
+  b.box(length/2+.011,.27,side*.15,.033,.105,.09,'#ffffff','headlight');b.box(-length/2-.011,.28,side*.16,.027,.085,.075,'#ffffff','taillight');
+ }
+ if(kind==='pickup'){b.box(-.41,.44,0,.45,.14,.44,'#686d61');b.box(-.43,.5,.21,.47,.16,.04,color);b.box(-.43,.5,-.21,.47,.16,.04,color);}
+ if(kind==='fuel'){b.box(-.28,.62,0,.90,.54,.54,'#cfceb5');b.box(-.28,.94,0,.38,.085,.27,'#b1b99f');b.box(-.28,.60,.278,.76,.14,.026,'#b49452');}
+ if(kind==='catering'){b.box(-.23,.66,0,1.13,.66,.58,'#ede0bd');b.box(-.24,.71,.299,.74,.2,.022,'#9b8560');}
+ if(kind==='baggage'){b.box(-.45,.45,0,.48,.12,.42,'#d3c7a4');for(let z of[-.13,.13])b.box(-.45,.6,z,.28,.27,.22,z<0?'#8c775b':'#b89f70');}
+ if(kind==='fire'){b.box(-.26,.7,0,.85,.62,.57,'#b95641');b.box(-.3,1.05,0,.88,.13,.24,'#c8c5aa');for(let x=-.68;x<.13;x+=.16)b.box(x,1.12,0,.03,.06,.27,'#9ea991','metal');b.box(.37,.69,0,.26,.07,.40,'#ffffff','emergency');b.box(0,.5,.294,1.15,.15,.02,'#e7d5a3');}
+ if(kind==='police'){b.box(-.08,.73,.12,.22,.075,.13,'#ffffff','navRed');b.box(-.08,.73,-.12,.22,.075,.13,'#ffffff','policeBlue');b.box(0,.33,.255,.60,.21,.025,'#f0e8d4');}
+ if(kind==='school'){b.box(0,.68,0,1.47,.12,.41,'#ddb055');b.box(0,.28,.246,1.5,.055,.025,'#645e43');}
+ b.flush();return {group,length:length*scale,span:.68*scale,height:(kind==='fire'?1.17:kind==='fuel'?.99:kind==='catering'?1.02:.76)*scale,kind};
+}
+const parkedVehicles=[];
+function parkCar(x,z,color,ry=PI/2,y=.12,scale=.65){const a=vehicle('car',color,scale);a.group.position.set(x,y,z);a.group.rotation.y=ry;parkedVehicles.push(a);return a;}
+// 静态停车车辆在各层板上方，保留空隙；没有车身埋入楼板。
+for(let y of[.19,1.0,1.82])for(let i=0;i<8;i++){parkCar(-11.9+i*.83,18.23,vehicleColors[i%7],PI/2,y,.52);parkCar(-11.9+i*.83,19.9,vehicleColors[(i+3)%7],-PI/2,y,.52);}
+for(let i=0;i<4;i++)parkCar(-3.0+i*1.33,17.16,vehicleColors[i],0,.06,.52);
+for(let x of[-30.85,-27.5,-24.15])parkCar(x+1.45,20.88,vehicleColors[Math.floor(rnd()*7)],0,.05,.5);
+const police=parkCar(21.4,14.25,'#456071',PI/2,.08,.68);
+{
+ const parkedBatch=new Batch(model),im=new T.Matrix4(),wm=new T.Matrix4(),ic=new T.Color();
+ for(const a of parkedVehicles){a.group.updateMatrix();for(const child of a.group.children){if(!child.isInstancedMesh)continue;const kind=Object.keys(M).find(k=>M[k]===child.material);if(!parkedBatch.data.has(kind))parkedBatch.data.set(kind,[]);for(let i=0;i<child.count;i++){child.getMatrixAt(i,im);child.getColorAt(i,ic);wm.multiplyMatrices(a.group.matrix,im);parkedBatch.data.get(kind).push([wm.clone(),'#'+ic.getHexString()]);}instanceTotal-=child.count;}model.remove(a.group);}
+ parkedBatch.flush();
+}
+
+// 弧长参数化折线路径：全部车辆在预定义路径上运动，不使用随机游走。
+class Path{
+ constructor(points,closed=false){this.points=points.map(p=>new T.Vector3(...p));this.closed=closed;this.segments=[];this.length=0;for(let i=0;i<this.points.length-1;i++){const len=this.points[i].distanceTo(this.points[i+1]);if(len>1e-7){this.segments.push({a:this.points[i],b:this.points[i+1],start:this.length,len});this.length+=len;}}}
+ at(distance){let s=this.closed?((distance%this.length)+this.length)%this.length:clamp(distance,0,this.length);let seg=this.segments[this.segments.length-1];for(const candidate of this.segments)if(s<=candidate.start+candidate.len){seg=candidate;break;}const t=clamp((s-seg.start)/seg.len,0,1);return {p:new T.Vector3().lerpVectors(seg.a,seg.b,t),t:new T.Vector3().subVectors(seg.b,seg.a).normalize()};}
+}
+function roundedRect(x0,x1,z0,z1,r,y=.1){r=Math.min(r,(x1-x0)/2,(z1-z0)/2);const p=[];
+ const centers=[[x1-r,z1-r,0],[x0+r,z1-r,PI/2],[x0+r,z0+r,PI],[x1-r,z0+r,PI*1.5]];
+ for(const [cx,cz,a] of centers)for(let i=0;i<=20;i++){const angle=a+i/20*PI/2;p.push([cx+Math.cos(angle)*r,y,cz+Math.sin(angle)*r]);}p.push(p[0]);return new Path(p,true);}
+function orient(actor,position,tangent){actor.group.position.copy(position);actor.group.rotation.set(0,-Math.atan2(tangent.z,tangent.x),Math.atan2(tangent.y,Math.hypot(tangent.x,tangent.z)),'YXZ');}
+function addActor(actor,path,speed,offset=0,name=actor.kind){const r={actor,path,speed,offset,name};movingActors.push(r);return r;}
+const taxiPath=roundedRect(-26.4,19.3,-.5,2.7,1.6,.1);
+taxiPlanes.forEach((p,i)=>addActor(p,taxiPath,1.18,taxiPath.length*(.13+i/3),'taxi aircraft '+i));
+const freeway=roundedRect(-32.0,22.5,21.37,22.44,.535,.085);
+for(let i=0;i<20;i++){const kind=i===3?'school':i===9?'police':i%5===0?'pickup':i===13?'bus':'car';addActor(vehicle(kind,kind==='school'?'#dfb152':kind==='police'?'#446077':vehicleColors[i%7],.75),freeway,2.0,i*freeway.length/20,'highway '+kind+' '+i);}
+const groundPath=roundedRect(-13.8,14.6,10.15,10.96,.405,.10);
+for(let i=0;i<7;i++){const kind=['baggage','fuel','catering','shuttle','baggage','cargo','shuttle'][i];const v=vehicle(kind,['#e8c47c','#d3d0b6','#ebe3ca','#6b9290'][i%4],.53);addActor(v,groundPath,.77,i*groundPath.length/7,'ground '+kind+' '+i);}
+const downtownPath=roundedRect(-15.5,19.9,-15.54,-15.02,.26,.095);
+for(let i=0;i<10;i++)addActor(vehicle(i===3?'bus':'car',vehicleColors[(i+2)%7],.55),downtownPath,1.25,i*downtownPath.length/10,'downtown '+i);
+const bridgePath=roundedRect(22.55,33.5,bridgeZ-.38,bridgeZ+.38,.38,deckY+.225);
+for(let i=0;i<6;i++)addActor(vehicle(i===2?'pickup':'car',vehicleColors[(i+1)%7],.60),bridgePath,1.4,i*bridgePath.length/6,'bridge '+i);
+const portPath=roundedRect(23.74,24.25,11.0,21.6,.255,.4);
+for(let i=0;i<2;i++)addActor(vehicle('baggage',i?'#cf9e55':'#658789',.52),portPath,.6,i*portPath.length/2,'port tractor '+i);
+const pushTug=vehicle('baggage','#ccaf65',.44);
+meshBox(pushTug.group,2.2,.065,.065,'#a3aa91',-1.74,.22,0);
+const fireTruck=vehicle('fire','#c66346',.78);fireTruck.group.position.set(-17.85,.1,18.55);fireTruck.group.rotation.y=PI/2;
+const fireRoute=new Path([[-17.85,.1,18.55],[-17.85,.1,16.15],[-17.0,.1,16.1],[-15.0,.1,16.1],[-15.0,.1,7.05],[-15.0,.1,5.8]],false);
+// 列车是一整列，不会发生车厢错位。到站停车后再反向，端点不瞬移。
+const train=new T.Group();model.add(train);const tb=new Batch(train);
+for(let car=0;car<3;car++){const x=(car-1)*1.62;tb.box(x,.37,0,1.48,.59,.82,'#e7dfc0');tb.box(x,.74,0,1.49,.13,.85,'#6b9089');tb.box(x,.27,0,1.50,.16,.855,'#599394');for(let s of[-1,1])for(let j=0;j<4;j++)tb.box(x-.49+j*.32,.54,s*.421,.24,.22,.028,'#567d87','glass');for(let xx of[-.45,.45])tb.box(x+xx,.06,0,.21,.18,.75,'#526760');if(car<2)tb.box(x+.81,.3,0,.16,.21,.34,'#687b74');}
+tb.box(2.36,.54,0,.035,.23,.65,'#41656e');tb.box(-2.36,.54,0,.035,.23,.65,'#41656e');tb.flush();
+// 渡轮在桥与集装箱船之间的空水域内绕行。
+const ferry=new T.Group();model.add(ferry);const fb=new Batch(ferry);fb.box(0,.17,0,1.65,.4,.74,'#d3dfcb');fb.box(.82,.18,0,.3,.30,.51,'#d3dfcb');fb.box(-.13,.53,0,1.14,.43,.63,'#eee2bc');fb.box(-.13,.81,0,1.30,.14,.74,'#d09a55');for(let s of[-1,1])for(let x=-.52;x<.5;x+=.25)fb.box(x,.6,s*.329,.18,.19,.025,'#689ea3','glass');fb.box(.65,.61,0,.045,.25,.53,'#658b92');fb.flush();
+addActor({group:ferry,kind:'ferry',length:2.02,span:.78,height:.92},roundedRect(27.6,32.8,-10.0,6.4,1.8,.10),.78,4,'bay ferry');
+// ─────────────────────── 连续起降回路 / 独占跑道 ───────────────────────
+// 两条空中回路分居机场南北，爬升至楼宇及桥梁上方后才转弯。
+const departureCurve=new T.CatmullRomCurve3([
+ [-27.0,0,-4.8],[-19,0,-4.8],[-6,0,-4.8],[4,.3,-4.8],[16,3.0,-4.8],[28,7.5,-4.8],
+ [33,10.7,3],[24,12.0,19],[0,12.4,24],[-26,11.8,18],[-34,8.0,5],[-35,3.7,-4.8],[-31,.8,-4.8],[-27,0,-4.8]
+].map(p=>new T.Vector3(...p)),false,'centripetal',.5);
+const arrivalCurve=new T.CatmullRomCurve3([
+ [-28,0,-11.5],[-17,0,-11.5],[-5,0,-11.5],[6,.6,-11.5],[18,4,-11.5],[31,9,-11.5],
+ [35,14,-20],[21,14.5,-29],[-5,14.5,-30],[-29,12,-25],[-36,6,-16],[-34,2.4,-11.5],[-30,.5,-11.5],[-28,0,-11.5]
+].map(p=>new T.Vector3(...p)),false,'centripetal',.5);
+departureCurve.arcLengthDivisions=1000;arrivalCurve.arcLengthDivisions=1000;
+const flight={depProgress:0,arrProgress:.867,depWait:8,arrWait:0,depLaps:0,arrLaps:0,queued:false};
+function flightPosition(curve,u){const p=curve.getPointAt(clamp(u,0,1)),t=curve.getTangentAt(clamp(u,0,1));p.y=Math.max(0,p.y)+.1;if(p.y<.12)t.y=0;return {p,t};}
+// ─────────────────────── 桌前 3D 实体操作台 ───────────────────────
+// 控件皆为场景网格和 Raycaster 命中目标，不使用 HTML 按钮/输入框。
+const consoleGroup=new T.Group();consoleGroup.position.set(0,G-.33,26.25);consoleGroup.rotation.x=.17;scene.add(consoleGroup);
+const consoleB=new Batch(consoleGroup);
+consoleB.box(0,-.17,0,54,.82,4.8,'#77583b');consoleB.box(0,.29,0,53.4,.19,4.35,'#244844');
+consoleB.box(0,.41,0,52.5,.06,4.05,'#2c5049');
+for(let x of[-26.1,26.1])for(let z of[-1.83,1.83])consoleB.box(x,.47,z,.11,.045,.11,'#b4b392','metal');
+for(let x of[-14.7,-6.25,1.9,9.7,17.35])consoleB.box(x,.456,0,.026,.01,3.53,'#648681');
+consoleB.flush();
+const controls={},hitMeshes=[];
+function controlHit(mesh,key){mesh.userData.control=key;hitMeshes.push(mesh);return mesh;}
+function invisibleHit(w,h,d,x,y,z,key){const mat=new T.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false});const m=new T.Mesh(cube,mat);m.scale.set(w,h,d);m.position.set(x,y,z);consoleGroup.add(m);return controlHit(m,key);}
+
+const consoleLabels=[];
+const plateZH={'TRAFFIC':'交通速度','MASTER SPEED':'拖拽调速 · ↑ / ↓','TIME OF DAY':'湾区时间','DRAG / CLICK • AUTO':'拖拽 / 点击 · 双击自动','DAY':'白天','NIGHT':'夜晚','DAWN':'黎明','SUNSET':'黄昏','AIRFIELD':'跑道灯光','RUNWAY / TAXI LIGHTS':'跑道 / 滑行道灯 · L','ON':'开启','OFF':'关闭','CITY LIGHTS':'城市灯光','BUILDINGS / STREETS':'建筑 / 街道 · B','DEPARTURE':'请求起飞','REQUEST TAKEOFF':'放行下一班飞机 · R','EMERGENCY':'机场消防','AIRPORT FIRE RESCUE':'消防出动 · E'};
+function plate(text,x,z,w=5.3,h=.52,fg='#ead7ac'){const options={fg,ground:true,size:60,pad:8};const m=label(language==='zh'?(plateZH[text]||text):text,x,.477,z,w,h,options,consoleGroup);consoleLabels.push({m,text,options});return m;}
+
+const cx={speed:-21.1,day:-10.4,runway:-2.15,city:5.9,takeoff:13.8,emergency:21.7};
+// 速度推杆：上下滑动滑轨。
+plate('TRAFFIC',cx.speed,-1.43,5.0,.61);plate('MASTER SPEED',cx.speed,1.53,5.0,.42,'#a2c8bd');
+const sl=new Batch(consoleGroup);sl.box(cx.speed,.49,.05,.33,.035,1.63,'#112b32');
+for(let z=-.67;z<.82;z+=.28){sl.box(cx.speed-.57,.49,z,.37,.016,.035,'#c2ceb4');sl.box(cx.speed+.57,.49,z,.37,.016,.035,'#c2ceb4');}sl.flush();
+const sliderStem=meshBox(consoleGroup,.10,.35,.10,'#b2bbaa',cx.speed,.63,0,M.metal);
+const slider=meshBox(consoleGroup,1.82,.30,.56,'#c86a45',cx.speed,.91,0);controlHit(slider,'speed');
+const rib=new Batch(slider); // 滑块自身使用立方体缩放后的局部细纹。
+for(let z=-.35;z<.45;z+=.2)rib.box(0,.51,z,.83,.015,.036,'#e4ae6f');rib.flush();
+invisibleHit(3.5,1.2,2.0,cx.speed,1.05,0,'speed');
+// 日夜旋钮与刻度圈。
+plate('TIME OF DAY',cx.day,-1.46,6.0,.57);plate('DRAG / CLICK • AUTO',cx.day,1.58,6.3,.37,'#a2c8bd');
+const knob=new T.Mesh(new T.CylinderGeometry(.70,.77,.35,24),new T.MeshStandardMaterial({color:'#d3ba88',roughness:.5,metalness:.28}));knob.position.set(cx.day,.7,0);consoleGroup.add(knob);controlHit(knob,'day');
+const pointer=meshBox(knob,.075,.018,.34,'#244b50',0,.181,-.39);
+for(let i=0;i<32;i++){const a=i/32*TAU;const b=new Batch(consoleGroup);b.box(cx.day+Math.sin(a)*.96,.49,-Math.cos(a)*.96,.035,.014,i%8===0?.18:.08,'#b4c9b3','solid',-a);b.flush();}
+plate('DAY',cx.day,-1.01,1.05,.28);plate('NIGHT',cx.day,1.06,1.42,.28);plate('DAWN',cx.day-2.13,0,1.44,.3);plate('SUNSET',cx.day+2.15,0,1.81,.3);
+invisibleHit(3.0,1.0,2.3,cx.day,.75,0,'day');
+// 跑道灯拨动开关。
+plate('AIRFIELD',cx.runway,-1.45,5.8,.61);plate('RUNWAY / TAXI LIGHTS',cx.runway,1.56,6.35,.40,'#a2c8bd');
+const switchBase=meshBox(consoleGroup,1.67,.09,1.19,'#192f34',cx.runway,.51,0);const togglePivot=new T.Group();togglePivot.position.set(cx.runway,.6,0);consoleGroup.add(togglePivot);
+const toggle=meshBox(togglePivot,.41,.61,.30,'#c7bb97',0,.29,0);controlHit(toggle,'runway');
+plate('ON',cx.runway+1.65,-.37,1.06,.36);plate('OFF',cx.runway+1.65,.42,1.22,.36,'#95b2a6');invisibleHit(3.0,1.1,1.62,cx.runway,.82,0,'runway');
+function pushButton(key,color,title,sub){const x=cx[key];plate(title,x,-1.46,6.5,.60);plate(sub,x,1.55,6.6,.39,'#a2c8bd');const mount=new T.Mesh(new T.CylinderGeometry(.82,.87,.13,16),new T.MeshStandardMaterial({color:'#172e34',roughness:.6}));mount.position.set(x,.54,0);consoleGroup.add(mount);const collar=new T.Mesh(new T.CylinderGeometry(.755,.78,.055,16),new T.MeshStandardMaterial({color:'#b9b18b',roughness:.42,metalness:.48}));collar.position.set(x,.623,0);consoleGroup.add(collar);const button=new T.Mesh(new T.CylinderGeometry(.63,.68,.27,16),new T.MeshStandardMaterial({color,roughness:.4,metalness:.12,emissive:color,emissiveIntensity:.15}));button.position.set(x,.73,0);consoleGroup.add(button);controlHit(button,key);invisibleHit(3,1.1,2,x,.85,0,key);return button;}
+const cityButton=pushButton('city','#d6ad62','CITY LIGHTS','BUILDINGS / STREETS');
+const takeoffButton=pushButton('takeoff','#78ac8c','DEPARTURE','REQUEST TAKEOFF');
+const emergencyButton=pushButton('emergency','#c97453','EMERGENCY','AIRPORT FIRE RESCUE');
+
+const controlLEDs={};for(const key of ['speed','day','runway','city','takeoff','emergency']){const mat=new T.MeshStandardMaterial({color:'#abc798',emissive:'#8dd58a',emissiveIntensity:1.1});const led=meshBox(consoleGroup,.14,.07,.14,0,cx[key]+2.35,.52,-.70,mat);controlLEDs[key]=led;}
+// 紧急按钮的防误触护圈（保留可点击空间，不使用覆盖式 HTML）。
+const guard=new Batch(consoleGroup);for(let s of[-1,1])guard.box(cx.emergency+s*1.05,.73,0,.12,.43,1.92,'#cbb38b','metal');guard.flush();
+meshBox(scene,54.1,1.9,.24,0,0,G-1.55,28.64,wood);
+const statusCanvas=document.createElement('canvas');statusCanvas.width=1800;statusCanvas.height=132;const statusCtx=statusCanvas.getContext('2d');const statusTexture=new T.CanvasTexture(statusCanvas);statusTexture.colorSpace=T.SRGBColorSpace;
+const statusScreen=new T.Mesh(new T.PlaneGeometry(33,1.00),new T.MeshBasicMaterial({map:statusTexture,toneMapped:false}));statusScreen.position.set(0,G-1.37,28.78);scene.add(statusScreen);
+label('BAYPORT',-22.2,G-1.38,28.79,8.0,.74,{fg:'#efddb4',size:85,pad:6},scene);
+label('INTERNATIONAL',-22.2,G-2.08,28.79,7.8,.39,{fg:'#ddc899',size:50,pad:4},scene);
+label('VOXEL WORLD\nSAN FRANCISCO BAY',22.2,G-1.5,28.79,8.0,1.06,{fg:'#e5d0a6',size:43,pad:7},scene);
+const apronHintOptions={fg:'#ded0af',size:46,pad:4,weight:'500'};const apronHint=label('DRAG TO ORBIT   /   SCROLL TO ZOOM   /   SHIFT-DRAG TO PAN   /   0 TO RESET',0,G-2.19,28.8,32.2,.34,apronHintOptions,scene);
+// ─────────────────────── 世界状态与昼夜灯光 ───────────────────────
+const state={time:0,simTime:0,speed:1,paused:false,sound:false,phase:7/36,phaseTransition:null,autoDay:true,runway:true,city:true,emergency:0,emergencyClock:0,firePatrol:0,lastPatrol:0,buttonPress:{city:0,takeoff:0,emergency:0},hover:null};
+const palettes=[
+ {sky:'#72b2cb',horizon:'#d5e4d8',fog:'#b3cbd0',sun:'#ffe3b0',ambient:1.4,sunPower:3.05,night:0},
+ {sky:'#8e789f',horizon:'#f1b68d',fog:'#c8a49a',sun:'#ffaf72',ambient:1.05,sunPower:2.25,night:.28},
+ {sky:'#122c4b',horizon:'#314960',fog:'#253d4c',sun:'#9acaf4',ambient:.60,sunPower:.36,night:1},
+ {sky:'#938da9',horizon:'#f2c0a6',fog:'#c0b8ad',sun:'#ffd0a2',ambient:.93,sunPower:1.55,night:.38},
+];
+const ca=new T.Color(),cc=new T.Color();let nightAmount=0;
+function paletteColor(key,idx,f,target){return target.set(palettes[idx][key]).lerp(cc.set(palettes[(idx+1)%4][key]),f);}
+function updateLighting(){
+ const v=((state.phase%1)+1)%1*4,idx=Math.floor(v),f=smooth(v-idx),p=palettes[idx],q=palettes[(idx+1)%4];nightAmount=lerp(p.night,q.night,f);
+ paletteColor('fog',idx,f,scene.background);scene.fog.color.copy(scene.background);
+ paletteColor('sky',idx,f,skyUniforms.top.value);paletteColor('horizon',idx,f,skyUniforms.bottom.value);skyUniforms.night.value=nightAmount;skyUniforms.time.value=state.time;
+ paletteColor('sun',idx,f,sun.color);sun.intensity=lerp(p.sunPower,q.sunPower,f);hemi.intensity=lerp(p.ambient,q.ambient,f);ambient.intensity=.48+nightAmount*.15;fill.intensity=.60-nightAmount*.26;
+ const r=state.runway?(.2+nightAmount*3.9):0;
+ for(const mat of haloMaterials)mat.opacity=state.runway?nightAmount*.88:0;
+ M.white.emissiveIntensity=r;M.blue.emissiveIntensity=r*1.45;M.green.emissiveIntensity=r*1.2;M.red.emissiveIntensity=r;
+ M.glass.emissiveIntensity=state.city?nightAmount*.68:0;M.city.emissiveIntensity=state.city?.10+nightAmount*2.6:0;
+ terminalLight.intensity=state.city?4+nightAmount*49:0;portLight.intensity=state.city?3+nightAmount*31:0;cityLight.intensity=state.city?2+nightAmount*67:0;
+ exhibition.intensity=50+nightAmount*65;
+ M.headlight.emissiveIntensity=.15+nightAmount*4.6;M.taillight.emissiveIntensity=.18+nightAmount*3;M.policeBlue.emissiveIntensity=2+nightAmount*4;
+ M.navRed.emissiveIntensity=2+nightAmount*4;M.navGreen.emissiveIntensity=2+nightAmount*4;M.navWhite.emissiveIntensity=2+nightAmount*5;
+ M.beacon.emissiveIntensity=(Math.sin(state.time*7.4)>.64?5.0:.12)*(1+nightAmount);
+ M.emergency.emissiveIntensity=(state.emergency>0&&Math.sin(state.time*15)>0)?7.5:0;
+ knob.rotation.y=-state.phase*TAU;
+ togglePivot.rotation.x=state.runway?-.38:.38;
+ cityButton.material.emissiveIntensity=state.city?.30:.015;
+ takeoffButton.material.emissiveIntensity=flight.depWait>0?.32:.07;
+ emergencyButton.material.emissiveIntensity=state.emergency>0?(Math.sin(state.time*15)>0?1.8:.05):.1;
+}
+function syncSlider(){const z=.75-(state.speed/2.5)*1.5;slider.position.z=z;sliderStem.position.z=z;}
+syncSlider();
+
+function phaseKey(){return ['day','sunset','night','dawn'][Math.floor((state.phase*4+.5)%4)];}
+function speedText(){return Math.round(state.speed/2.5*100)+'% · '+state.speed.toFixed(2)+'×';}
+function departureStatus(){return state.emergency>0?'rescue':flight.queued?'queued':flight.depWait>0?'ready':flight.depProgress<.28?'departing':flight.depProgress>.87?'approach':'airborne';}
+function updateStatus(){
+ const g=statusCtx,w=statusCanvas.width,h=statusCanvas.height;g.fillStyle='#142b29';g.fillRect(0,0,w,h);g.fillStyle=state.emergency>0?'#ecb78f':state.paused?'#ddb780':'#add0b4';g.fillRect(24,26,13,13);g.font='600 31px Arial,"PingFang SC","Microsoft YaHei",sans-serif';g.textBaseline='middle';
+ g.fillText(tr(state.paused?'paused':departureStatus()),55,36,755);g.fillStyle='#d1d9bb';g.fillText(tr('trafficLabel')+' '+state.speed.toFixed(2)+'×'+(state.paused?' · 0×':''),840,36,390);g.fillText(tr(phaseKey())+' / '+tr(state.autoDay?'auto':'manual'),1260,36,510);
+ g.fillStyle='#80aba5';g.font='24px Arial,"PingFang SC","Microsoft YaHei",sans-serif';g.fillText(tr('location'),54,93,755);g.fillText(tr('runway')+' '+tr(state.runway?'on':'off')+' / '+tr('city')+' '+tr(state.city?'on':'off'),840,93,390);g.fillText(tr('consoleHint'),1260,93,510);statusTexture.needsUpdate=true;
+ const hour=(12+state.phase*24)%24,hh=Math.floor(hour),mm=Math.floor((hour-hh)*60);$('clock-text').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');$('day-text').textContent=tr(phaseKey());$('sun-dot').style.background=nightAmount>.6?'#9fbdd6':'#e9c68d';
+ $('speed-text').textContent=speedText();$('guide-speed').textContent=speedText();$('guide-cycle').textContent=state.autoDay?tr('auto')+' · 240s':tr('manual');$('run-label').textContent=tr(state.paused?'paused':state.emergency>0?'rescue':state.speed<.01?'idle':'live');$('aircraft-text').textContent=tr('aircraftText')(aircraft.length);$('run-dot').style.background=state.emergency>0?'#ed9f76':state.paused||state.speed<.01?'#d6bc8b':'#a9d6ab';
+ for(const[key,led]of Object.entries(controlLEDs)){const active={speed:!state.paused&&state.speed>0,day:state.autoDay,runway:state.runway,city:state.city,takeoff:flight.depWait>0,emergency:state.emergency>0}[key];led.material.emissiveIntensity=active?(key==='emergency'?(Math.sin(state.time*15)>0?3:.1):1.4):.015;led.material.color.set(key==='emergency'?'#dc805d':'#abc798');led.material.emissive.set(key==='emergency'?'#ff5028':'#8dd58a');}
+}
+function refreshUI(){for(const {m,text,options} of consoleLabels){m.material.map=textTexture(language==='zh'?(plateZH[text]||text):text,options);m.material.needsUpdate=true;}apronHint.material.map=textTexture(language==='zh'?'拖动环视  /  滚轮缩放  /  SHIFT + 拖动平移  /  0 回到桌前':'DRAG TO ORBIT  /  SCROLL TO ZOOM  /  SHIFT-DRAG TO PAN  /  0 TO RESET',apronHintOptions);apronHint.material.needsUpdate=true;renderer.domElement.setAttribute('aria-label',tr('stageAria'));$('sound-btn').title=tr(state.sound?'soundOff':'soundOn');$('sound-btn').setAttribute('aria-label',$('sound-btn').title);$('sound-btn').setAttribute('aria-pressed',String(state.sound));updateStatus();}
+function setSpeed(value,notify=false){state.speed=clamp(value,0,2.5);if(state.speed<.025)state.speed=0;syncSlider();updateStatus();if(notify)toast(tr('speedToast')+speedText());}
+function setAutoDay(){state.phaseTransition=null;state.autoDay=true;updateStatus();toast(tr('autoToast'));}
+function pauseTraffic(){state.paused=!state.paused;clickSound();updateStatus();toast(tr(state.paused?'pauseToast':'resumeToast'));}
+let lastStatus=-1;
+function requestTakeoff(){state.buttonPress.takeoff=.25;if(flight.depWait>0&&state.emergency<=0){flight.depWait=0;flight.queued=false;}else flight.queued=true;updateStatus();}
+function requestEmergency(){if(state.emergency<=0){state.emergency=24;state.emergencyClock=0;}state.buttonPress.emergency=.25;updateStatus();}
+
+function trigger(key){clickSound();
+ if(key==='runway'){state.runway=!state.runway;toast(tr(state.runway?'runwayOn':'runwayOff'));}
+ else if(key==='city'){state.city=!state.city;state.buttonPress.city=.22;toast(tr(state.city?'cityOn':'cityOff'));}
+ else if(key==='takeoff'){const release=flight.depWait>0&&state.emergency<=0;requestTakeoff();toast(tr(release?'takeoffToast':'queuedToast'));}
+ else if(key==='emergency'){const active=state.emergency>0;requestEmergency();toast(tr(active?'emergencyActive':'emergencyToast'));}
+ else if(key==='day'){const from=state.phase,target=((Math.floor((state.phaseTransition?.target??from)*4+.5)+1)%4)/4;const delta=((target-from)%1+1)%1;state.phaseTransition={from,target,delta,elapsed:0};state.autoDay=false;toast(tr('dayToast')+tr(['day','sunset','night','dawn'][Math.round(target*4)%4]));}
+ else if(key==='stop')pauseTraffic();
+ updateLighting();updateStatus();
+}
+// Procedural Web Audio only. No sound is loaded, and no context starts before a gesture.
+let audioContext,masterGain,ambientGain,noiseSource;
+function ensureAudio(){if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error('Audio unavailable');audioContext=new Audio();masterGain=audioContext.createGain();masterGain.gain.value=.28;masterGain.connect(audioContext.destination);const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);let sample=0;for(let i=0;i<data.length;i++){sample=(sample+(Math.random()*2-1)*.025)*.986;data[i]=sample;}noiseSource=audioContext.createBufferSource();noiseSource.buffer=buffer;noiseSource.loop=true;const filter=audioContext.createBiquadFilter();filter.type='lowpass';filter.frequency.value=480;ambientGain=audioContext.createGain();ambientGain.gain.value=0;noiseSource.connect(filter).connect(ambientGain).connect(masterGain);noiseSource.start();}if(audioContext.state==='suspended')audioContext.resume().catch(()=>toast(tr('audioError')));}
+function setSound(on){try{ensureAudio();state.sound=on;$('sound-waves').setAttribute('d',on?'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14':'m16 9 5 6m0-6-5 6');refreshUI();toast(tr(on?'soundEnabled':'soundDisabled'));}catch(_){toast(tr('audioError'));}}
+function tone(freq,start,duration,volume,type='sine'){const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0,start);g.gain.linearRampToValueAtTime(volume,start+.015);g.gain.exponentialRampToValueAtTime(.0001,start+duration);o.connect(g).connect(masterGain);o.start(start);o.stop(start+duration+.02);o.onended=()=>{o.disconnect();g.disconnect();};}
+function chime(){try{ensureAudio();const now=audioContext.currentTime;[659.25,523.25,392].forEach((f,i)=>tone(f,now+i*.24,.7,.14));toast(tr('chimeToast'));}catch(_){toast(tr('audioError'));}}
+function clickSound(){if(!state.sound)return;try{ensureAudio();tone(520,audioContext.currentTime,.045,.055,'triangle');}catch(_){}}
+function updateJetbridges(){
+ // 自动推出机位：先收桥，再推出，回位后才重新对接。
+ const c=(state.simTime+4)%42;
+ let push=0;if(c>=8&&c<15)push=smooth((c-8)/7);else if(c>=15&&c<21)push=1;else if(c>=21&&c<28)push=1-smooth((c-21)/7);
+ gatePlanes[1].group.position.z=7.2-push*.83;
+ pushTug.group.position.set(-3,.11,9.60-push*.83);pushTug.group.rotation.y=-PI/2;
+ for(const j of jetbridges){
+  let retract=j.index===1?(c<5?0:c<8?smooth((c-5)/3):c<29?1:c<33?1-smooth((c-29)/4):0):.14+.1*Math.sin(state.simTime*.08+j.phase);
+  const start=new T.Vector3(j.x-1.07,1.16,11.5),end=new T.Vector3(j.x-.69-retract*.69,1.16,8.6);
+  // 宽体机门略向前，机桥不伸入翼面。
+  if(j.index===0)end.z=8.72;
+  const delta=end.clone().sub(start),mid=start.clone().add(end).multiplyScalar(.5);j.g.position.copy(mid);j.g.rotation.y=-Math.atan2(delta.z,delta.x);
+  for(const part of[j.floor,j.glass,j.roof])part.scale.x=delta.length();j.floor.position.y=-.22;j.glass.position.y=.01;j.roof.position.y=.25;
+ }
+}
+function updateFlight(dt){
+ // 独占跑道；紧急出动时暂停新的离地许可，不冻结已在空中的飞机。
+ if(flight.depWait>0&&flight.queued&&state.emergency<=0){flight.depWait=0;flight.queued=false;}
+ if(flight.depWait>0){if(state.emergency<=0)flight.depWait=Math.max(0,flight.depWait-dt);}
+ else{const u=flight.depProgress;let rate=u<.08?lerp(.002,.010,u/.08):u>.90?.0075:.0118;flight.depProgress+=dt*rate;
+  if(flight.depProgress>=1){flight.depProgress=0;flight.depWait=flight.queued?1:13;flight.queued=false;flight.depLaps++;}
+ }
+ if(flight.arrWait>0)flight.arrWait=Math.max(0,flight.arrWait-dt);else{let rate=flight.arrProgress<.10?.008:flight.arrProgress>.89?.0075:.0103;flight.arrProgress+=dt*rate;if(flight.arrProgress>=1){flight.arrProgress=0;flight.arrWait=9;flight.arrLaps++;}}
+ const d=flightPosition(departureCurve,flight.depProgress),a=flightPosition(arrivalCurve,flight.arrProgress);orient(departures,d.p,d.t);orient(arrivals,a.p,a.t);
+}
+function updateFire(dt){
+ if(state.emergency>0){state.emergencyClock+=dt;state.emergency=Math.max(0,24-state.emergencyClock);}
+ else if(state.simTime-state.lastPatrol>115){state.lastPatrol=state.simTime;state.firePatrol=20;}
+ if(state.firePatrol>0)state.firePatrol=Math.max(0,state.firePatrol-dt);
+ let t=state.emergency>0?state.emergencyClock:state.firePatrol>0?20-state.firePatrol:0;
+ let phase=0;if(state.emergency>0||state.firePatrol>0){phase=t<8?smooth(t/8):t<12?1:t<20?1-smooth((t-12)/8):0;}
+ const pos=fireRoute.at(phase*fireRoute.length);if(t>12)pos.t.multiplyScalar(-1);orient(fireTruck,pos.p,pos.t);
+}
+function updateWorld(realDt){
+ const dt=realDt*(state.paused?0:state.speed);state.time+=realDt;state.simTime+=dt;
+ if(state.phaseTransition){const q=state.phaseTransition;q.elapsed+=realDt;const f=smooth(q.elapsed/2.4);state.phase=(q.from+q.delta*f)%1;if(q.elapsed>=2.4){state.phase=q.target;state.phaseTransition=null;}}else if(state.autoDay)state.phase=(state.phase+realDt/240)%1;
+ if(ambientGain&&audioContext)ambientGain.gain.setTargetAtTime(state.sound?(state.paused?.018:.025+state.speed*.10):0,audioContext.currentTime,.15);
+ for(const r of movingActors){const pp=r.path.at(state.simTime*r.speed+r.offset);orient(r.actor,pp.p,pp.t);}
+ updateFlight(dt);updateJetbridges();updateFire(dt);
+ const tc=state.simTime%65;let tx;if(tc<3)tx=-16.9;else if(tc<30)tx=lerp(-16.9,15.7,smooth((tc-3)/27));else if(tc<35)tx=15.7;else if(tc<62)tx=lerp(15.7,-16.9,smooth((tc-35)/27));else tx=-16.9;train.position.set(tx,2.5,16.7);
+ for(const prop of propellers)prop.rotation.x+=dt*20;
+ radar.rotation.y+=realDt*.72;windsock.rotation.y=.24+Math.sin(state.time*.63)*.22;windsock.rotation.z=Math.sin(state.time*1.8)*.045;
+ crane.position.x=28.8+Math.sin(state.simTime*.16)*1.1;ship.position.y=.21+Math.sin(state.time*.65)*.025;
+ for(const flag of flags){const a=flag.geometry.attributes.position;for(let i=0;i<a.count;i++){const x=a.getX(i);a.setZ(i,Math.sin(x*6-state.time*4.3)*.08*((x+.75)/1.5));}a.needsUpdate=true;}
+ for(const key of['city','takeoff','emergency'])state.buttonPress[key]=Math.max(0,state.buttonPress[key]-realDt);
+ cityButton.position.y=.73-((state.buttonPress.city>0||gesture?.key==='city')?.12:0);takeoffButton.position.y=.73-((state.buttonPress.takeoff>0||gesture?.key==='takeoff')?.12:0);emergencyButton.position.y=.73-((state.buttonPress.emergency>0||gesture?.key==='emergency')?.12:0);
+ if(Math.floor(state.time*6)!==lastStatus){lastStatus=Math.floor(state.time*6);updateLighting();updateStatus();}
+}
+// ─────────────────────── 相机与射线拾取 ───────────────────────
+// 安全观察壳：低视角时始终在展桌外；高视角位于整个模型和空中回路上方。
+const view={theta:.38,elevation:.27,radius:72,target:new T.Vector3(0,G+.5,1.0),desiredTheta:.38,desiredElevation:.27,desiredRadius:72,pan:new T.Vector3(0,G+.5,1.0)};
+function updateCamera(dt,immediate=false){
+ const k=immediate?1:1-Math.exp(-dt*12);view.theta=lerp(view.theta,view.desiredTheta,k);view.elevation=lerp(view.elevation,view.desiredElevation,k);view.radius=lerp(view.radius,view.desiredRadius,k);view.target.lerp(view.pan,k);
+ const r=view.radius,c=Math.cos(view.elevation);camera.position.set(view.target.x+Math.sin(view.theta)*r*c,view.target.y+Math.sin(view.elevation)*r,view.target.z+Math.cos(view.theta)*r*c);
+ // 防止平移/缩放把镜头带进桌子或飞机活动空间。
+ if(Math.abs(camera.position.x)<39&&camera.position.z<30&&camera.position.y<G+18)camera.position.y=G+18;
+ camera.position.x=Math.max(camera.position.x,-79);camera.position.y=Math.max(camera.position.y,G+6);camera.lookAt(view.target);camera.updateMatrixWorld();
+}
+function resetView(){view.desiredTheta=.38;view.desiredElevation=.27;view.desiredRadius=innerWidth/innerHeight<1.1?116:72;view.pan.set(0,G+.5,1.0);}
+if(innerWidth/innerHeight<1.1)view.radius=view.desiredRadius=116;
+updateCamera(1,true);scene.updateMatrixWorld(true);
+
+const raycaster=new T.Raycaster(),mouse=new T.Vector2();let gesture=null;const canvas=renderer.domElement;
+const activePointers=new Map();let pinchDistance=0,pinchCenter=null;
+function pick(e){const r=canvas.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);raycaster.setFromCamera(mouse,camera);return raycaster.intersectObjects(hitMeshes,false)[0];}
+const tooltipKeys={speed:['controlSpeed','helpSpeed','↑ / ↓'],day:['controlDay','helpDay','N / A'],runway:['controlRunway','helpRunway','L'],city:['controlCity','helpCity','B'],takeoff:['controlTakeoff','helpTakeoff','R / T'],emergency:['controlEmergency','helpEmergency','E']};
+function showTooltip(key,e){state.hover=key||null;const tip=$('tooltip');if(!key||document.body.classList.contains('clean')){tip.style.opacity=0;return;}const d=tooltipKeys[key];tip.replaceChildren();const strong=document.createElement('strong');strong.textContent=tr(d[0])+' · '+d[2];tip.append(strong,document.createElement('br'),document.createTextNode(tr(d[1])));tip.style.left=Math.max(10,Math.min(e.clientX+16,innerWidth-280))+'px';tip.style.top=Math.max(12,Math.min(e.clientY-90,innerHeight-150))+'px';tip.style.opacity=1;}
+function panView(dx,dy){const k=view.desiredRadius*.0012;view.pan.x=clamp(view.pan.x-dx*k*Math.cos(view.theta),-10,10);view.pan.z=clamp(view.pan.z-dy*k,-7,9);}
+function stopGesture(){gesture=null;pinchDistance=0;pinchCenter=null;activePointers.clear();canvas.style.cursor='grab';showTooltip(null);}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('pointerdown',e=>{
+ if(e.pointerType==='mouse'&&e.button!==0&&e.button!==2)return;canvas.focus();canvas.setPointerCapture(e.pointerId);activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(activePointers.size===2){const p=[...activePointers.values()];pinchDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);pinchCenter={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};gesture={mode:'pinch'};showTooltip(null);return;}if(activePointers.size>2)return;
+ const hit=e.button===2?null:pick(e),key=hit?.object.userData.control;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,key,mode:key?'control':e.button===2||e.shiftKey?'pan':'orbit',moved:0,startSpeed:state.speed,startPhase:state.phase};if(key==='day')state.phaseTransition=null;if(key&&key in state.buttonPress)state.buttonPress[key]=.22;canvas.style.cursor=key==='speed'?'ns-resize':'grabbing';showTooltip(key,e);
+});
+canvas.addEventListener('pointermove',e=>{
+ if(activePointers.has(e.pointerId))activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(gesture?.mode==='pinch'){if(activePointers.size!==2)return;const p=[...activePointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),center={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};if(dist>0&&pinchDistance>0)view.desiredRadius=clamp(view.desiredRadius*pinchDistance/dist,34,150);if(pinchCenter)panView(center.x-pinchCenter.x,center.y-pinchCenter.y);pinchDistance=dist;pinchCenter=center;return;}
+ if(!gesture){const key=pick(e)?.object.userData.control;canvas.style.cursor=key?(key==='speed'?'ns-resize':key==='day'?'ew-resize':'pointer'):'grab';showTooltip(key,e);return;}
+ if(e.pointerId!==gesture.id)return;const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;gesture.x=e.clientX;gesture.y=e.clientY;gesture.moved=Math.max(gesture.moved,Math.hypot(e.clientX-gesture.sx,e.clientY-gesture.sy));
+ if(gesture.mode==='control'){
+  if(gesture.key==='speed'){setSpeed(gesture.startSpeed+(gesture.sy-e.clientY)*.015);$('tooltip').textContent=tr('controlSpeed')+' · '+speedText();}
+  else if(gesture.key==='day'&&gesture.moved>3){state.autoDay=false;state.phaseTransition=null;state.phase=((gesture.startPhase+(e.clientX-gesture.sx-(e.clientY-gesture.sy)*.5)/360)%1+1)%1;updateLighting();updateStatus();}
+ }else if(gesture.mode==='orbit'){view.desiredTheta=clamp(view.desiredTheta-dx*.0045,-1.35,1.35);view.desiredElevation=clamp(view.desiredElevation+dy*.0045,.22,1.15);}
+ else panView(dx,dy);
+});
+function pointerUp(e,cancel=false){activePointers.delete(e.pointerId);if(gesture?.mode==='pinch'){stopGesture();}else if(gesture&&gesture.id===e.pointerId){const g=gesture;if(!cancel&&g.mode==='control'){if(g.key==='speed'&&g.moved>3)toast(tr('speedToast')+speedText());else if(g.key!=='speed'&&g.moved<8&&pick(e)?.object.userData.control===g.key)trigger(g.key);}gesture=null;canvas.style.cursor='grab';showTooltip(null);}try{canvas.releasePointerCapture(e.pointerId);}catch(_){} }
+canvas.addEventListener('pointerup',e=>pointerUp(e));canvas.addEventListener('pointercancel',e=>pointerUp(e,true));canvas.addEventListener('lostpointercapture',e=>{if(gesture?.id===e.pointerId||gesture?.mode==='pinch')stopGesture();});canvas.addEventListener('pointerleave',()=>{if(!gesture)showTooltip(null);});
+canvas.addEventListener('wheel',e=>{e.preventDefault();view.desiredRadius=clamp(view.desiredRadius*Math.exp(e.deltaY*.00075),34,150);showTooltip(null);},{passive:false});
+function home(){resetView();toast(tr('homeToast'));}
+canvas.addEventListener('dblclick',e=>{const hit=pick(e);if(hit?.object.userData.control==='day')setAutoDay();else if(!hit)home();});
+window.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target?.matches?.('input,textarea,select,[contenteditable="true"]')||$('guide').classList.contains('open'))return;const key=e.key.toLowerCase();if((key===' '||key==='enter')&&e.target?.closest?.('button'))return;const map={l:'runway',b:'city',n:'day',r:'takeoff',t:'takeoff',e:'emergency',' ':'stop'};if(map[key]){e.preventDefault();if(!e.repeat)trigger(map[key]);}else if(key==='arrowup'||key==='arrowdown'){e.preventDefault();setSpeed(state.speed+(key==='arrowup'?.125:-.125),true);}else if(key==='a'&&!e.repeat)setAutoDay();else if(key==='m'&&!e.repeat)setSound(!state.sound);else if(key==='h'&&!e.repeat)chime();});
+window.addEventListener('blur',stopGesture);
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();stopGesture();toast(tr('webglLost'));});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
+// ─────────────────────── 性能自适应与测试接口 ───────────────────────
+// 测试接口只暴露状态和显式步进，不请求外部数据，不影响正常操作。
+function projectControl(key){const object=hitMeshes.find(m=>m.userData.control===key);scene.updateMatrixWorld(true);const p=object.getWorldPosition(new T.Vector3()).project(camera);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}
+function actorBox(actor){const p=actor.group.position,yaw=actor.group.rotation.y;return {x:p.x,z:p.z,y:p.y,h:actor.height,hl:actor.length/2,hw:actor.span/2,yaw,name:actor.kind};}
+function overlap2D(a,b,padding=0){
+ const axes=[[Math.cos(a.yaw),-Math.sin(a.yaw)],[Math.sin(a.yaw),Math.cos(a.yaw)],[Math.cos(b.yaw),-Math.sin(b.yaw)],[Math.sin(b.yaw),Math.cos(b.yaw)]];
+ const A=axes.slice(0,2),C=axes.slice(2);for(const n of axes){const distance=Math.abs((b.x-a.x)*n[0]+(b.z-a.z)*n[1]);const ar=a.hl*Math.abs(A[0][0]*n[0]+A[0][1]*n[1])+a.hw*Math.abs(A[1][0]*n[0]+A[1][1]*n[1]);const br=b.hl*Math.abs(C[0][0]*n[0]+C[0][1]*n[1])+b.hw*Math.abs(C[1][0]*n[0]+C[1][1]*n[1]);if(distance>=ar+br+padding)return false;}return true;
+}
+function safetySnapshot(){
+ const actors=[...movingActors.map(r=>({a:r.actor,name:r.name})),{a:departures,name:'departure'},{a:arrivals,name:'arrival'},...aircraft.filter(a=>a!==departures&&a!==arrivals&&!taxiPlanes.includes(a)).map((a,i)=>({a,name:'parked aircraft '+i})),{a:fireTruck,name:'fire engine'}];
+ const issues=[];
+ for(let i=0;i<actors.length;i++){const a=actorBox(actors[i].a);for(let j=i+1;j<actors.length;j++){const b=actorBox(actors[j].a);if(a.y>=b.y+b.h||b.y>=a.y+a.h)continue;if(overlap2D(a,b,-.045))issues.push(actors[i].name+' / '+actors[j].name);}
+ for(const o of blockers){if(a.y>=o.maxY||a.y+a.h<=o.minY)continue;const b={x:(o.minX+o.maxX)/2,z:(o.minZ+o.maxZ)/2,hl:(o.maxX-o.minX)/2,hw:(o.maxZ-o.minZ)/2,yaw:0};if(overlap2D(a,b,-.035))issues.push(actors[i].name+' / '+o.name);}}
+ return [...new Set(issues)];
+}
+window.__airport={version:'2.0-bayline-aligned',refreshUI,setLanguage,setSpeed,setAutoDay,pauseTraffic,home,openGuide,closeGuide,chime,toggleSound:()=>setSound(!state.sound),state,flight,renderer,scene,camera,model,aircraft,movingActors,blockers,view,departures,arrivals,departureCurve,arrivalCurve,fireTruck,pushTug,train,consoleGroup,controls:cx,projectControl,trigger,safetySnapshot,step:updateWorld,resetView,setDay(p){state.phaseTransition=null;state.autoDay=false;state.phase=((p%1)+1)%1;updateLighting();updateStatus();},getInfo(){return {instances:instanceTotal,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,aircraft:aircraft.length,vehicles:movingActors.length,state:{speed:state.speed,phase:state.phase,city:state.city,runway:state.runway,emergency:state.emergency},flight:{...flight},safety:safetySnapshot()};}};
+refreshUI();updateWorld(0);updateLighting();updateStatus();
+let ready=false;
+let previous=performance.now(),sampleFrames=0,sampleTime=0,lowFrames=0;
+function animate(now){requestAnimationFrame(animate);const raw=(now-previous)/1000;previous=now;const dt=Math.min(.045,Math.max(0,raw));updateWorld(dt);updateCamera(dt);renderer.render(scene,camera);sampleFrames++;sampleTime+=raw;
+ if(!ready){ready=true;$('loading').style.opacity='0';setTimeout(()=>$('loading').style.display='none',850);setTimeout(()=>toast(tr('readyToast')),1000);}
+ if(sampleTime>4){const fps=sampleFrames/sampleTime;if(fps<28&&renderer.getPixelRatio()>1){lowFrames++;if(lowFrames>=2)renderer.setPixelRatio(1);}sampleFrames=0;sampleTime=0;}
+}
+document.addEventListener('visibilitychange',()=>{previous=performance.now();if(document.hidden){stopGesture();if(audioContext)audioContext.suspend().catch(()=>{});}else if(state.sound&&audioContext)audioContext.resume().catch(()=>{});});
+requestAnimationFrame(animate);
+console.info('Bayport International ready — single HTML / Three.js only / '+instanceTotal+' instanced voxels.');
+}
+</script>
+</body>
+</html>
