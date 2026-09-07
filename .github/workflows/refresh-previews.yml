@@ -1,0 +1,80 @@
+name: Refresh simulator previews
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - airport.html
+      - bayline.html
+      - .github/workflows/refresh-previews.yml
+permissions:
+  contents: write
+concurrency:
+  group: simulator-previews
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned screenshot tools
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.1 sharp@0.34.3
+          npx playwright install --with-deps chromium
+      - name: Capture real WebGL renders without changing the simulators
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/simulated-world-server.log 2>&1 &
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const sharp = require('sharp');
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          (async () => {
+            fs.mkdirSync('assets/previews', { recursive: true });
+            const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+            const report = [];
+            try {
+              for (const [file, name] of [['bayline.html', 'bayline'], ['airport.html', 'bayport']]) {
+                const errors = [];
+                const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+                page.on('pageerror', e => errors.push(e.message));
+                await page.goto(`http://127.0.0.1:8765/${file}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
+                await page.waitForFunction(() => {
+                  const canvas = document.querySelector('#stage canvas');
+                  const loading = document.querySelector('#loading');
+                  return canvas && canvas.width > 100 && (!loading || getComputedStyle(loading).display === 'none' || Number(getComputedStyle(loading).opacity) === 0);
+                }, null, { timeout: 90000 });
+                await page.waitForTimeout(1500);
+                const title = await page.title();
+                const diagnostics = await page.evaluate(() => ({ canvasCount: document.querySelectorAll('#stage canvas').length, failed: document.querySelector('#failure') ? getComputedStyle(document.querySelector('#failure')).display !== 'none' : false }));
+                if (errors.length || diagnostics.failed) throw new Error(`${file}: ${JSON.stringify({ errors, diagnostics })}`);
+                // Hide only the screenshot's interface. The source HTML files remain byte-for-byte unchanged.
+                await page.addStyleTag({ content: 'header,footer,.edition,.scale,.vignette,#tooltip,#toast,#guide{visibility:hidden!important}' });
+                const image = await page.screenshot({ type: 'png' });
+                const stats = await sharp(image).stats();
+                if (stats.channels.slice(0,3).every(c => c.stdev < 8)) throw new Error(`${file}: unexpectedly flat render`);
+                await sharp(image).webp({ quality: 83 }).toFile(`assets/previews/${name}.webp`);
+                await sharp(image).resize(720,450).webp({quality:80}).toFile(`assets/previews/${name}-small.webp`);
+                report.push({ file, title, sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'), errors, ...diagnostics });
+                await page.close();
+              }
+              fs.writeFileSync('assets/previews/manifest.json', JSON.stringify({ description: 'Actual browser captures of the original simulator files. UI hidden only during capture.', sourceCommit: process.env.GITHUB_SHA, scenes: report }, null, 2) + '\n');
+              console.log(JSON.stringify(report, null, 2));
+            } finally { await browser.close(); }
+          })().catch(error => { console.error(error); process.exit(1); });
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulator-previews
+          path: assets/previews/
+          retention-days: 7
+      - name: Commit only generated previews
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/previews/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh real simulator preview images [skip ci]'
+            git push origin HEAD:main
+          fi
