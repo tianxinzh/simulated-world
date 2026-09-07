@@ -1,0 +1,100 @@
+name: Test gallery in Chromium
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: [index.html, 'assets/home.*', '.github/workflows/gallery-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          npm install --no-save --no-package-lock playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Check layout, language, navigation and live previews
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gallery-server.log 2>&1 &
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          (async () => {
+            fs.mkdirSync('test-results', {recursive:true});
+            const manifest = JSON.parse(fs.readFileSync('assets/previews/manifest.json','utf8'));
+            for (const scene of manifest.scenes) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(scene.file)).digest('hex'), scene.sha256, `${scene.file} differs from the previewed original`);
+            const browser = await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+            const report = {sourceIntegrity:'pass', layouts:[], previews:[]};
+            try {
+              for (const width of [1440,1024,768,390,320]) {
+                const page = await browser.newPage({viewport:{width,height:950},reducedMotion:'reduce'});
+                const errors=[]; page.on('pageerror', e=>errors.push(e.message));
+                const requests=[]; page.on('request',r=>requests.push(r.url()));
+                await page.goto('http://127.0.0.1:8765/',{waitUntil:'networkidle'});
+                assert.equal(await page.locator('iframe').count(),0,'No simulator should load before a user request');
+                assert(!requests.some(u=>/three.*\.js|airport\.html|bayline\.html/.test(u)),'Homepage eagerly loaded a simulator');
+                await page.locator('[data-filter="rail"]').click();
+                assert.equal(await page.locator('.world-card:visible h3').innerText(),'BAYLINE');
+                await page.locator('[data-filter="air"]').click();
+                assert.equal(await page.locator('.world-card:visible h3').innerText(),'BAYPORT');
+                await page.locator('[data-filter="all"]').click();
+                assert.equal(await page.locator('.world-card:visible').count(),2);
+                await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
+                for (const language of ['en','zh']) {
+                  if(language==='zh') await page.locator('#lang').click();
+                  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Horizontal overflow: ${width}/${language}`);
+                  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+                  await page.waitForTimeout(150);
+                  if([1440,390].includes(width)) await page.screenshot({path:`test-results/home-${width}-${language}.png`,fullPage:true});
+                }
+                await page.reload({waitUntil:'networkidle'});
+                assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN','Language preference did not persist');
+                await page.locator('#lang').click();
+                await page.locator('details summary').first().click();
+                assert.notEqual(await page.locator('details').first().getAttribute('open'),null);
+                for (const path of ['bayline.html','airport.html']) {
+                  const response=await page.request.get(`http://127.0.0.1:8765/${path}`);
+                  assert.equal(response.status(),200); assert((await response.text()).includes('id="stage"'));
+                }
+                if(width===1440) {
+                  for (const key of ['bayline','bayport']) {
+                    await page.locator(`.world-card [data-preview="${key}"]`).click();
+                    assert(await page.locator('#world-preview').evaluate(e=>e.open));
+                    const frame=await (await page.locator('#preview-mount iframe').elementHandle()).contentFrame();
+                    await frame.waitForFunction(()=>{
+                      const canvas=document.querySelector('#stage canvas');
+                      const loading=document.querySelector('#loading');
+                      return canvas&&canvas.width>100&&(!loading||getComputedStyle(loading).display==='none'||Number(getComputedStyle(loading).opacity)===0);
+                    },null,{timeout:90000});
+                    await page.screenshot({path:`test-results/live-${key}.png`});
+                    await page.locator('#preview-close').click();
+                    await page.waitForFunction(()=>document.querySelectorAll('iframe').length===0);
+                    assert(!await page.locator('body').evaluate(e=>e.classList.contains('preview-open')));
+                    report.previews.push({world:key,webgl:'rendered',unloadedOnClose:true});
+                  }
+                }
+                assert.deepEqual(errors,[]);
+                report.layouts.push({width,languages:['en','zh'],filters:'pass',overflow:false,errors});
+                await page.close();
+              }
+              const nojs=await browser.newContext({javaScriptEnabled:false});
+              const plain=await nojs.newPage(); await plain.goto('http://127.0.0.1:8765/');
+              assert.equal(await plain.locator('.world-card:visible').count(),2);
+              assert.equal(await plain.locator('.hero .actions a').count(),2);
+              report.withoutJavaScript='Gallery and launch links remain available';
+              fs.writeFileSync('test-results/report.json',JSON.stringify(report,null,2));
+              console.log(JSON.stringify(report,null,2));
+            } finally {await browser.close();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gallery-browser-tests
+          path: test-results/
+          retention-days: 7
