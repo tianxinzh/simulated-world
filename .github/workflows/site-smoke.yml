@@ -1,0 +1,86 @@
+name: Verify public site
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/site-smoke.yml']
+  workflow_run:
+    workflows: ['Deploy to GitHub Pages', 'pages build and deployment']
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: public-site-smoke
+  cancel-in-progress: false
+
+jobs:
+  homepage:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify HTTPS response and landing-page content
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          from html.parser import HTMLParser
+
+          URL = 'https://tianxinzh.github.io/simulated-world/'
+
+          class Page(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = set()
+                  self.translations = 0
+                  self.title_open = False
+                  self.title = ''
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if 'id' in attrs:
+                      self.ids.add(attrs['id'])
+                  if 'data-en' in attrs and 'data-zh' in attrs:
+                      self.translations += 1
+                  if tag == 'title':
+                      self.title_open = True
+              def handle_endtag(self, tag):
+                  if tag == 'title':
+                      self.title_open = False
+              def handle_data(self, data):
+                  if self.title_open:
+                      self.title += data
+
+          for attempt in range(1, 7):
+              try:
+                  req = urllib.request.Request(URL, headers={'User-Agent': 'SimulatedWorld-SiteCheck/1.0', 'Cache-Control': 'no-cache'})
+                  with urllib.request.urlopen(req, timeout=15) as response:
+                      status = response.status
+                      final_url = response.url
+                      content_type = response.headers.get('Content-Type', '')
+                      html = response.read().decode('utf-8')
+                  assert status == 200, f'Unexpected status: {status}'
+                  assert final_url == URL, f'Unexpected redirect: {final_url}'
+                  assert 'text/html' in content_type, f'Unexpected content type: {content_type}'
+                  page = Page()
+                  page.feed(html)
+                  assert 'Simulated World' in page.title, 'Wrong page title'
+                  assert {'worlds', 'about', 'lang'} <= page.ids, 'Missing landing-page sections'
+                  assert page.translations >= 5, 'Missing bilingual page content'
+                  result = {'url': URL, 'http_status': status, 'title': page.title, 'bilingual_elements': page.translations, 'verification': 'HTTP and HTML structure only; not a simulator or browser interaction test'}
+                  print(json.dumps(result, ensure_ascii=False, indent=2))
+                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+                      summary.write('## Public homepage verified\n\n')
+                      summary.write(f'- URL: {URL}\n- HTTP status: {status}\n- Title: {page.title}\n- Bilingual elements: {page.translations}\n\n')
+                      summary.write('This verifies HTTP delivery and HTML structure, not simulator functionality or browser interactions.\n')
+                  break
+              except Exception as error:
+                  print(f'Attempt {attempt}/6 failed: {error}', flush=True)
+                  if attempt == 6:
+                      raise
+                  time.sleep(5)
+          PY
