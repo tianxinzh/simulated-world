@@ -1,0 +1,22 @@
+{
+  "description": "Actual browser captures of the original simulator files. UI hidden only during capture.",
+  "sourceCommit": "c0b83d138f7153940c6c629c075acaa76ce1308c",
+  "scenes": [
+    {
+      "file": "bayline.html",
+      "title": "BAYLINE — San Francisco Model Railway Workshop",
+      "sha256": "c0205d920ec62369a1df8f65bee33d705c7e1059ed55359ea8fa37442ca7e591",
+      "errors": [],
+      "canvasCount": 1,
+      "failed": false
+    },
+    {
+      "file": "airport.html",
+      "title": "BAYPORT — San Francisco Bay Miniature Airport",
+      "sha256": "fdea390911b48d98a014d7c8b3db9c3dcc0c8746545d6407a31bed80c4613d9e",
+      "errors": [],
+      "canvasCount": 1,
+      "failed": false
+    }
+  ]
+}
