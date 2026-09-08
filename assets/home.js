@@ -13,7 +13,7 @@
   let slowTimer;
   const scenes = {
     bayline: { title: 'BAYLINE', path: 'bayline.html', description: { en: 'BAYLINE railway simulator', zh: 'BAYLINE 铁路模拟器' } },
-    bayport: { title: 'BAYPORT', path: 'airport.html', description: { en: 'BAYPORT airport simulator', zh: 'BAYPORT 机场模拟器' } }
+    bayport: { title: 'BAYPORT', path: 'airport.html?v=2.1', description: { en: 'BAYPORT v2.1 aircraft-focused airport simulator', zh: 'BAYPORT v2.1 飞机聚焦版机场模拟器' } }
   };
   function applyLanguage() {
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
