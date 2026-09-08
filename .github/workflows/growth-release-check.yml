@@ -1,0 +1,82 @@
+name: Validate search and measurement release
+on:
+  push:
+    branches: ['growth/search-and-measurement']
+    paths: ['.github/workflows/growth-release-check.yml']
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Prepare static pages and audit fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('assets/growth.js')
+          s=p.read_text().replace("s.frame.parentElement?.querySelector('[data-player-status]')", "s.frame.closest('[data-player]')?.querySelector('[data-player-status]')")
+          p.write_text(s)
+          p=Path('tests/growth-check.cjs');s=p.read_text()
+          s=s.replace("await privacy.waitForFunction(()=>window.dataLayer?.length>4);assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.dataLayer?.length>4);await privacy.waitForTimeout(500);assert.equal(requests.length,1);")
+          s=s.replace("await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.SW?.status().consent==='rejected'&&!window.SW.status().tagRequested);await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);")
+          p.write_text(s)
+          PY
+          python3 tools/build_growth.py
+          node --check assets/growth.js
+          node --check assets/home.js
+          node --check tests/growth-check.cjs
+      - name: Install pinned browser tools
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Test actual pages and measured players
+        run: |
+          mkdir -p /tmp/sw-site
+          ln -s "$GITHUB_WORKSPACE" /tmp/sw-site/simulated-world
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory /tmp/sw-site >/tmp/growth-server.log 2>&1 &
+          node tests/growth-check.cjs
+      - name: Record a real airport day-night clip
+        run: |
+          mkdir -p assets/tours test-results/video
+          node <<'JS'
+          const {chromium}=require('playwright');const fs=require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+            try{
+              const context=await browser.newContext({viewport:{width:960,height:600},recordVideo:{dir:'test-results/video',size:{width:960,height:600}}});
+              const page=await context.newPage();const started=Date.now();
+              await page.goto('http://127.0.0.1:8765/simulated-world/airport.html');
+              await page.waitForFunction(()=>window.__airport&&getComputedStyle(document.querySelector('#loading')).display==='none',null,{timeout:90000});
+              await page.waitForTimeout(600);const offset=(Date.now()-started)/1000;
+              for(const phase of [.1,.25,.5,.75]){await page.evaluate(p=>window.__airport.setDay(p),phase);await page.waitForTimeout(3200);}
+              const video=page.video();await context.close();await video.saveAs('test-results/video/raw.webm');
+              fs.writeFileSync('test-results/video/offset.txt',String(offset+.2));
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          ffmpeg -y -hide_banner -loglevel error -ss "$(cat test-results/video/offset.txt)" -i test-results/video/raw.webm -t 12 -an -c:v libvpx-vp9 -b:v 900k assets/tours/bayport-tour.webm
+          python3 tools/build_growth.py
+      - name: Save reviewed files on the working branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html zh worlds guides about privacy monitor tools/campaign-builder assets/growth.js assets/home.js assets/site-config.js assets/tours assets/previews/manifest.json airport.html bayline.html sitemap.xml robots.txt site-inventory.json docs/robots-host-root.txt tools/templates/home.html tests/growth-check.cjs
+          git diff --cached --quiet || git commit -m 'Build validated bilingual search pages and consent-aware play analytics'
+          git push origin HEAD:growth/search-and-measurement
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search-measurement-validation
+          path: |
+            test-results/
+            assets/tours/
+            site-inventory.json
+            index.html
+            worlds/bayport/index.html
+            tools/build_growth.py
+            assets/growth.js
+          retention-days: 7
