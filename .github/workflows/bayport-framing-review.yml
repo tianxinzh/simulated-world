@@ -11,10 +11,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Apply source-verified framing revision
+      - name: Finalize verified camera revision and check JavaScript syntax
         run: |
-          cp airport.html airport-before.html
-          python3 tools/refine_bayport.py airport.html
+          python3 tools/finalize_bayport_camera.py
           python3 - <<'PY'
           from pathlib import Path
           import re, subprocess
@@ -26,51 +25,82 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.55.1
           npx playwright install --with-deps chromium
-      - name: Real WebGL screenshots and route regression checks
+      - name: Render desktop and mobile; exercise actual raycast controls and routes
         run: |
           mkdir -p review
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/bayport-server.log 2>&1 &
           node <<'JS'
           const {chromium}=require('playwright');
           const fs=require('node:fs');
+          const assert=require('node:assert/strict');
           (async()=>{
             const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
             const report=[];
             try{
-              const cases=[['airport-before.html','before',1440,900,null],['airport.html','default',1440,900,null],['airport.html','tighter',1440,900,{radius:84}],['airport.html','higher',1440,900,{radius:84,elevation:.61}],['airport.html','night',1440,900,null],['airport.html','portrait',900,1400,null],['airport.html','phone',430,932,null]];
-              for(const [file,name,width,height,cam] of cases){
-                const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
-                await page.goto('http://127.0.0.1:8765/'+file,{waitUntil:'domcontentloaded'});
+              for(const [name,width,height] of [['default',1440,900],['night',1440,900],['laptop',1024,768],['portrait',900,1400],['phone',430,932]]){
+                const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1,hasTouch:true});
+                const errors=[];page.on('pageerror',e=>errors.push(e.message));
+                await page.goto('http://127.0.0.1:8765/airport.html',{waitUntil:'domcontentloaded'});
                 await page.waitForFunction(()=>window.__airport,{timeout:90000});
-                await page.evaluate(({cam,name})=>{const a=window.__airport;a.state.paused=true;a.setDay(name==='night'?.5:.11);if(cam){for(const k of ['radius','elevation'])if(cam[k]!=null){a.view[k]=cam[k];a.view['desired'+k[0].toUpperCase()+k.slice(1)]=cam[k];}}},{cam,name});
+                await page.evaluate(name=>{const a=window.__airport;a.state.paused=true;a.setDay(name==='night'?.5:.11);},name);
                 await page.waitForTimeout(1600);
-                if(name==='default')await page.screenshot({path:'review/default-ui.png'});
-                await page.addStyleTag({content:'header,footer,.edition,.scale,.vignette,#toast,#tooltip{visibility:hidden!important}'});
+                await page.screenshot({path:'review/'+name+'-ui.png'});
+                const style=await page.addStyleTag({content:'header,footer,.edition,.scale,.vignette,#toast,#tooltip{visibility:hidden!important}'});
                 await page.screenshot({path:'review/'+name+'.png'});
-                const info=await page.evaluate(()=>{const a=window.__airport;return {version:a.version,camera:a.camera.position.toArray(),radius:a.view.radius,controls:Object.fromEntries(Object.keys(a.controls).map(k=>[k,a.projectControl(k)])),info:a.getInfo()}});
-                report.push({name,width,height,errors,...info});
-                if(errors.length)throw Error(JSON.stringify(errors));
+                await style.evaluate(e=>e.remove());
+                const info=await page.evaluate(()=>{const a=window.__airport;return {version:a.version,camera:a.camera.position.toArray(),radius:a.view.radius,fog:[a.scene.fog.near,a.scene.fog.far],controls:Object.fromEntries(Object.keys(a.controls).map(k=>[k,a.projectControl(k)])),info:a.getInfo()}});
+                for(const [key,pos] of Object.entries(info.controls))assert(pos.x>0&&pos.x<width&&pos.y>0&&pos.y<height,`${name} control outside viewport: ${key}`);
+                assert(info.fog[0]>info.radius,`${name}: fog should start beyond the layout`);
                 if(name==='default'){
+                  const checks={};
+                  const click=async key=>{const p=await page.evaluate(k=>window.__airport.projectControl(k),key);await page.mouse.click(p.x,p.y);};
+                  for(const key of ['runway','city']){const before=await page.evaluate(k=>window.__airport.state[k],key);await click(key);checks[key]=await page.evaluate(({key,before})=>window.__airport.state[key]!==before,{key,before});}
+                  let p=await page.evaluate(()=>window.__airport.projectControl('speed'));
+                  const oldSpeed=await page.evaluate(()=>window.__airport.state.speed);
+                  await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x,p.y-45,{steps:6});await page.mouse.up();
+                  checks.lever=await page.evaluate(x=>window.__airport.state.speed>x,oldSpeed);
+                  p=await page.evaluate(()=>window.__airport.projectControl('day'));
+                  const oldPhase=await page.evaluate(()=>window.__airport.state.phase);
+                  await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+45,p.y,{steps:6});await page.mouse.up();
+                  checks.dayDial=await page.evaluate(x=>Math.abs(window.__airport.state.phase-x)>.05,oldPhase);
+                  await page.evaluate(()=>{const a=window.__airport;a.flight.depWait=4;a.flight.queued=false;a.state.emergency=0;});
+                  await click('takeoff');checks.takeoff=await page.evaluate(()=>window.__airport.flight.depWait===0);
+                  await click('emergency');checks.emergency=await page.evaluate(()=>window.__airport.state.emergency>0);
+                  await page.click('#language-btn');checks.language=await page.evaluate(()=>document.documentElement.lang==='zh-CN');
+                  await page.click('#language-btn');await page.keyboard.press('Space');checks.pause=await page.evaluate(()=>!window.__airport.state.paused);await page.keyboard.press('Space');
+                  await page.mouse.move(1000,450);await page.mouse.wheel(0,-220);await page.waitForTimeout(300);
+                  checks.zoom=await page.evaluate(()=>window.__airport.view.desiredRadius<84);
+                  await page.keyboard.press('0');await page.waitForTimeout(900);checks.home=await page.evaluate(()=>Math.abs(window.__airport.view.radius-84)<.05);
+                  await page.click('#help-btn');checks.guide=await page.evaluate(()=>document.querySelector('#guide').classList.contains('open'));await page.keyboard.press('Escape');
+                  await page.setViewportSize({width:430,height:932});await page.waitForTimeout(900);checks.resize=await page.evaluate(()=>window.__airport.scene.fog.near>window.__airport.view.radius&&window.__airport.view.radius>200);
+                  await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(900);checks.resizeBack=await page.evaluate(()=>Math.abs(window.__airport.view.radius-84)<.05);
+                  fs.writeFileSync('review/interactions.json',JSON.stringify(checks,null,2));for(const [key,value]of Object.entries(checks))assert(value,`interaction failed: ${key}`);
                   const route=await page.evaluate(()=>{const a=window.__airport;a.state.paused=false;a.state.autoDay=false;a.state.speed=1;const hits=new Map();for(let i=0;i<3600;i++){if(i===200||i===2000)a.trigger('emergency');a.step(.2);for(const hit of a.safetySnapshot())if(!hits.has(hit))hits.set(hit,a.state.simTime);}return {simulatedSeconds:a.state.simTime,issues:[...hits],depLaps:a.flight.depLaps,arrLaps:a.flight.arrLaps}});
-                  fs.writeFileSync('review/routes.json',JSON.stringify(route,null,2));
+                  fs.writeFileSync('review/routes.json',JSON.stringify(route,null,2));assert.equal(route.issues.length,0,'route collision sample');
                 }
-                await page.close();
+                if(name==='phone'){
+                  const cdp=await page.context().newCDPSession(page);const old=await page.evaluate(()=>window.__airport.view.desiredRadius);
+                  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:150,y:400},{x:280,y:400}]});
+                  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:110,y:400},{x:320,y:400}]});
+                  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+                  const pinch=await page.evaluate(x=>window.__airport.view.desiredRadius<x,old);assert(pinch,'pinch zoom failed');info.pinch=pinch;
+                }
+                report.push({name,width,height,errors,...info});assert.equal(errors.length,0,JSON.stringify(errors));await page.close();
               }
-              fs.writeFileSync('review/report.json',JSON.stringify(report,null,2));
-              fs.copyFileSync('airport.html','review/airport.html');
+              fs.writeFileSync('review/report.json',JSON.stringify(report,null,2));fs.copyFileSync('airport.html','review/airport.html');
             }finally{await browser.close();}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bayport-framing-review
+          name: bayport-final-framing-review
           path: review/
           retention-days: 3
-      - name: Commit only the reviewed simulator on the working branch
+      - name: Commit only validated simulator to the working branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add airport.html
-          git commit -m 'Refine BAYPORT aircraft framing and BAYLINE workbench proportions'
+          git commit -m 'Finalize close aircraft-first view and responsive camera clarity'
           git push origin HEAD:refine/bayport-aircraft-framing
