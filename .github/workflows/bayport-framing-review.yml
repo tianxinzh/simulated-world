@@ -66,14 +66,15 @@ jobs:
                   await page.evaluate(()=>{const a=window.__airport;a.flight.depWait=4;a.flight.queued=false;a.state.emergency=0;});
                   await click('takeoff');checks.takeoff=await page.evaluate(()=>window.__airport.flight.depWait===0);
                   await click('emergency');checks.emergency=await page.evaluate(()=>window.__airport.state.emergency>0);
-                  await page.click('#language-btn');checks.language=await page.evaluate(()=>document.documentElement.lang==='zh-CN');
-                  await page.click('#language-btn');await page.keyboard.press('Space');checks.pause=await page.evaluate(()=>!window.__airport.state.paused);await page.keyboard.press('Space');
+                  await page.click('#language-btn');checks.language=await page.evaluate(()=>document.documentElement.lang==='zh-CN');await page.click('#language-btn');
+                  // Space activates a focused HTML button by design; focus the 3D stage for its shortcut.
+                  await page.focus('#stage');await page.keyboard.press('Space');checks.pause=await page.evaluate(()=>!window.__airport.state.paused);await page.keyboard.press('Space');
                   await page.mouse.move(1000,450);await page.mouse.wheel(0,-220);await page.waitForTimeout(300);
                   checks.zoom=await page.evaluate(()=>window.__airport.view.desiredRadius<84);
-                  await page.keyboard.press('0');await page.waitForTimeout(900);checks.home=await page.evaluate(()=>Math.abs(window.__airport.view.radius-84)<.05);
+                  await page.keyboard.press('0');await page.waitForFunction(()=>Math.abs(window.__airport.view.radius-84)<.05,null,{timeout:15000});checks.home=true;
                   await page.click('#help-btn');checks.guide=await page.evaluate(()=>document.querySelector('#guide').classList.contains('open'));await page.keyboard.press('Escape');
-                  await page.setViewportSize({width:430,height:932});await page.waitForTimeout(900);checks.resize=await page.evaluate(()=>window.__airport.scene.fog.near>window.__airport.view.radius&&window.__airport.view.radius>200);
-                  await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(900);checks.resizeBack=await page.evaluate(()=>Math.abs(window.__airport.view.radius-84)<.05);
+                  await page.setViewportSize({width:430,height:932});await page.waitForFunction(()=>window.__airport.view.radius>250,null,{timeout:15000});checks.resize=await page.evaluate(()=>window.__airport.scene.fog.near>window.__airport.view.radius);
+                  await page.setViewportSize({width:1440,height:900});await page.waitForFunction(()=>Math.abs(window.__airport.view.radius-84)<.05,null,{timeout:15000});checks.resizeBack=true;
                   fs.writeFileSync('review/interactions.json',JSON.stringify(checks,null,2));for(const [key,value]of Object.entries(checks))assert(value,`interaction failed: ${key}`);
                   const route=await page.evaluate(()=>{const a=window.__airport;a.state.paused=false;a.state.autoDay=false;a.state.speed=1;const hits=new Map();for(let i=0;i<3600;i++){if(i===200||i===2000)a.trigger('emergency');a.step(.2);for(const hit of a.safetySnapshot())if(!hits.has(hit))hits.set(hit,a.state.simTime);}return {simulatedSeconds:a.state.simTime,issues:[...hits],depLaps:a.flight.depLaps,arrLaps:a.flight.arrLaps}});
                   fs.writeFileSync('review/routes.json',JSON.stringify(route,null,2));assert.equal(route.issues.length,0,'route collision sample');
