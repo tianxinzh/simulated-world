@@ -1,6 +1,6 @@
 {
   "description": "Actual browser captures of the original simulator files. UI hidden only during capture.",
-  "sourceCommit": "86fa7a7e05fdecf1ba305618740912777dad43b4",
+  "sourceCommit": "1214b6bcffa17197fdd69bf78de80584813e1c14",
   "scenes": [
     {
       "file": "bayline.html",
@@ -8,9 +8,7 @@
       "sha256": "21a76c01f656b9ec70a893042ed5a0c2a6cc82e589357946ac8607e6a43718fb",
       "errors": [],
       "canvasCount": 1,
-      "failed": false,
-      "capturedSourceSha256": "c0205d920ec62369a1df8f65bee33d705c7e1059ed55359ea8fa37442ca7e591",
-      "metadataNote": "Same scene visuals; added metadata, language entry and local parent event hooks after capture."
+      "failed": false
     },
     {
       "file": "airport.html",
@@ -18,9 +16,7 @@
       "sha256": "1883bcd8f85b55d2fc6905ea866902586b8861b26e07b603cad484145832096e",
       "errors": [],
       "canvasCount": 1,
-      "failed": false,
-      "capturedSourceSha256": "fac07aef5ac0026c0a389c3e1a15c0b927e1b37a5172e7185e6c2fe9a52c4167",
-      "metadataNote": "Same scene visuals; added metadata, language entry and local parent event hooks after capture."
+      "failed": false
     }
   ]
 }
