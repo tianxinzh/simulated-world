@@ -94,7 +94,7 @@
     if(e.origin!==location.origin||!e.data||e.data.type!=='sw:world')return;
     const s=[...sessions.values()].find(x=>x.frame.contentWindow===e.source&&x.world===e.data.world);if(!s)return;
     const base={world:s.world,release:s.release,entry_point:s.entry_point};
-    if(e.data.event==='ready'&&!s.ready){s.ready=true;event('world_ready',{...base,load_ms:performance.now()-s.started});s.frame.parentElement?.querySelector('[data-player-status]')?.replaceChildren(document.createTextNode(text('Ready. The physical tabletop controls are interactive.','加载完成，可操作桌前实体控制台。')));}
+    if(e.data.event==='ready'&&!s.ready){s.ready=true;event('world_ready',{...base,load_ms:performance.now()-s.started});s.frame.closest('[data-player]')?.querySelector('[data-player-status]')?.replaceChildren(document.createTextNode(text('Ready. The physical tabletop controls are interactive.','加载完成，可操作桌前实体控制台。')));}
     else if(e.data.event==='interaction'&&s.ready&&!s.interaction){s.interaction=true;event('world_interaction',{...base,control:e.data.control||'control'});}
     else if(e.data.event==='error'&&!s.failed){s.failed=true;event('world_error',{...base,error_code:'scene_error'});}
   });

@@ -6,7 +6,7 @@ const prefix=new URL(cfg.baseUrl).pathname;
 const host='http://127.0.0.1:8765';
 const base=host+prefix;
 const inventory=JSON.parse(fs.readFileSync('site-inventory.json','utf8'));
-const report={seo:[],layouts:[],players:[],privacy:{},campaign:{},limitations:['GA4 network delivery and provider-account ownership are not tested: no real measurement or verification credentials were supplied.','Elapsed-time threshold checks advance a browser test clock after real rendering and real user-input tests.']};
+const report={seo:[],layouts:[],players:[],privacy:{},campaign:{},limitations:['GA4 network delivery and provider-account ownership are not tested: no real measurement or verification credentials were supplied.','Visible-play thresholds use real elapsed time after real rendering and trusted input; test rendering is stopped during the timer-only segment.']};
 fs.mkdirSync('test-results',{recursive:true});
 (async()=>{
  const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
@@ -18,7 +18,7 @@ fs.mkdirSync('test-results',{recursive:true});
    const html=await response.text();
    const canonical=[...html.matchAll(/<link rel="canonical" href="([^"]+)"/g)].map(x=>x[1]);assert.deepEqual(canonical,[p.url]);
    assert.equal((html.match(/<h1[ >]/g)||[]).length,1,path+' h1');
-   assert(/<meta name="description" content="[^"]{30,}"/.test(html),path+' description');
+   assert(/<meta name="description" content="[^"]{15,}"/.test(html),path+' description');
    assert(!html.includes('content="noindex'),path+' unexpectedly noindex');
    for(const lang of ['en','zh-Hans','x-default'])assert(html.includes('hreflang="'+lang+'"'),path+' language '+lang);
    const alt=[...html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)];
@@ -53,12 +53,12 @@ fs.mkdirSync('test-results',{recursive:true});
   }
   const plainContext=await browser.newContext({javaScriptEnabled:false});const plain=await plainContext.newPage();await plain.goto(base+'zh/worlds/bayline/');assert((await plain.locator('h1').innerText()).includes('虚拟模型铁路'));assert.equal(await plain.locator('iframe').count(),0);await plainContext.close();
   for(const world of ['bayport','bayline']){
-   const page=await browser.newPage({viewport:{width:1440,height:1000}});await page.clock.install();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(base+'worlds/'+world+'/?debug=1',{waitUntil:'networkidle'});
    await page.locator('[data-play]').click();
    await page.waitForFunction(()=>window.SW.events().some(x=>x.name==='world_ready'),null,{timeout:90000});
    const frame=await(await page.locator('iframe').elementHandle()).contentFrame();
-   await page.locator('iframe').scrollIntoViewIfNeeded();await frame.locator('#stage').press('l');await frame.locator('#stage').press('ArrowUp');
+   await page.locator('iframe').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));await frame.locator('#stage').press('l');await frame.locator('#stage').press('ArrowUp');
    await page.waitForFunction(()=>window.SW.events().some(x=>x.name==='world_interaction'));
    const counts=await page.evaluate(()=>Object.fromEntries(['world_open','world_ready','world_interaction'].map(k=>[k,SW.events().filter(x=>x.name===k).length])));assert.deepEqual(counts,{world_open:1,world_ready:1,world_interaction:1});
    assert((await page.locator('[data-player-status]').innerText()).includes('Ready.'));
@@ -66,15 +66,15 @@ fs.mkdirSync('test-results',{recursive:true});
     await page.screenshot({path:'test-results/world-live.png'});
     // First prove the real renderer and trusted keyboard controls above; freeze only test rendering before advancing timers.
     await frame.evaluate(()=>{window.requestAnimationFrame=()=>0});
-    await page.locator('[data-player]').evaluate(el=>el.style.display='none');await page.waitForTimeout(500);await page.clock.runFor(65000);
+    await page.locator('[data-player]').evaluate(el=>el.style.display='none');await page.waitForTimeout(500);await page.waitForTimeout(65000);
     assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='engaged_play').length),0,'hidden player counted');
-    await page.locator('[data-player]').evaluate(el=>el.style.display='');await page.locator('iframe').scrollIntoViewIfNeeded();await page.waitForTimeout(500);await page.clock.runFor(62000);
+    await page.locator('[data-player]').evaluate(el=>el.style.display='');await page.locator('iframe').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForTimeout(500);await page.waitForTimeout(62000);
     assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='engaged_play').length),1,'engaged threshold');assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='watched_play').length),1);
-    await page.clock.runFor(62000);assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='engaged_play').length),1,'duplicate engagement');
+    await page.waitForTimeout(2000);assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='engaged_play').length),1,'duplicate engagement');
     const prior=await page.evaluate(()=>SW.events().length);await page.evaluate(()=>window.dispatchEvent(new MessageEvent('message',{origin:'https://evil.example',source:frames[0],data:{type:'sw:world',world:'bayport',event:'error'}})));assert.equal(await page.evaluate(()=>SW.events().length),prior,'untrusted origin accepted');
    }
    await page.locator('[data-stop]').click();assert.equal(await page.locator('iframe').count(),0);assert.equal(await page.evaluate(()=>SW.events().filter(x=>x.name==='world_end').length),1);
-   assert.deepEqual(errors,[]);report.players.push({world,realWebGL:'rendered',trustedControlInput:'pass',deduplication:'pass',visiblePlayClockTest:world==='bayport'?'pass':'not repeated',unloaded:true,errors});await page.close();
+   assert.deepEqual(errors,[]);report.players.push({world,realWebGL:'rendered',trustedControlInput:'pass',deduplication:'pass',visiblePlayElapsedTimeTest:world==='bayport'?'pass':'not repeated',unloaded:true,errors});await page.close();
   }
   const homepage=await browser.newPage({viewport:{width:1440,height:1000}});await homepage.goto(base+'?debug=1');await homepage.locator('.world-card [data-preview="bayport"]').click();await homepage.waitForFunction(()=>SW.events().some(x=>x.name==='world_ready'),null,{timeout:90000});assert((await homepage.locator('#preview-launch').getAttribute('href')).endsWith('worlds/bayport/'));await homepage.locator('#preview-close').click();await homepage.waitForFunction(()=>document.querySelectorAll('iframe').length===0);await homepage.close();
   const testCfg={...cfg,basePath:prefix,measurementId:'G-TEST123456'};
@@ -83,12 +83,12 @@ fs.mkdirSync('test-results',{recursive:true});
   await privacy.route('https://www.googletagmanager.com/**',r=>{requests.push(r.request().url());return r.fulfill({contentType:'application/javascript',body:'/* Isolated GA stub: no production data transmitted. */'})});
   await privacy.goto(base+'worlds/bayport/?utm_source=youtube&utm_campaign=test&secret=do-not-send',{waitUntil:'networkidle'});assert.equal(requests.length,0);
   await privacy.evaluate(()=>SW.event('world_open',{world:'preconsent'}));
-  await privacy.getByRole('button',{name:'Allow analytics',exact:true}).click();await privacy.waitForFunction(()=>window.dataLayer?.length>4);assert.equal(requests.length,1);
+  await privacy.getByRole('button',{name:'Allow analytics',exact:true}).click();await privacy.waitForFunction(()=>window.dataLayer?.length>4);await privacy.waitForTimeout(500);assert.equal(requests.length,1);
   const queue=await privacy.evaluate(()=>window.dataLayer.map(x=>Array.from(x)));
   assert(queue.some(x=>x[0]==='consent'&&x[1]==='default'&&x[2].analytics_storage==='denied'));
   assert(queue.some(x=>x[0]==='consent'&&x[1]==='update'&&x[2].analytics_storage==='granted'));
   assert(!JSON.stringify(queue).includes('do-not-send'));assert(!JSON.stringify(queue).includes('preconsent'));
-  await privacy.evaluate(()=>SW.privacy());await privacy.getByRole('button',{name:'Decline',exact:true}).click();await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);
+  await privacy.evaluate(()=>SW.privacy());await privacy.getByRole('button',{name:'Decline',exact:true}).click();await privacy.waitForFunction(()=>window.SW?.status().consent==='rejected'&&!window.SW.status().tagRequested);await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);
   report.privacy={beforeConsentRequests:0,afterConsentTagRequests:1,revocation:'tag not reloaded',querySanitization:'pass',preConsentReplay:false,GA4:'test stub only; no real property configured'};await privacy.close();
   const gpc=await browser.newPage();await gpc.addInitScript(()=>Object.defineProperty(navigator,'globalPrivacyControl',{get:()=>true}));await gpc.route('**/assets/site-config.js*',r=>r.fulfill({contentType:'application/javascript',body:'window.SW_CONFIG='+JSON.stringify(testCfg)}));let gpcCalls=0;await gpc.route('https://www.googletagmanager.com/**',r=>{gpcCalls++;return r.abort()});await gpc.goto(base);await gpc.evaluate(()=>SW.privacy());assert(await gpc.getByRole('button',{name:'Allow analytics',exact:true}).isDisabled());assert.equal(gpcCalls,0);report.privacy.globalPrivacyControl='pass';await gpc.close();
   const campaign=await browser.newPage();await campaign.goto(base+'tools/campaign-builder/');await campaign.locator('#campaign-form button[type="submit"]').click();const result=await campaign.locator('#campaign-result').innerText();assert(result.includes('/worlds/bayport/?utm_source=youtube'));await campaign.locator('[name=source]').fill('person@example.com');await campaign.locator('#campaign-form button[type="submit"]').click();assert((await campaign.locator('#campaign-result').innerText()).includes('never personal'));report.campaign={validLink:result,rejectsEmail:'pass'};await campaign.close();

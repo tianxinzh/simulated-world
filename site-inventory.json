@@ -1,0 +1,130 @@
+{
+  "baseUrl": "https://tianxinzh.github.io/simulated-world/",
+  "pages": [
+    {
+      "route": "worlds/bayport/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/worlds/bayport/",
+      "title": "Free Online Miniature Airport Simulator — BAYPORT"
+    },
+    {
+      "route": "guides/bayport-controls/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/guides/bayport-controls/",
+      "title": "BAYPORT Controls & Tabletop Layout Guide"
+    },
+    {
+      "route": "worlds/bayline/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/worlds/bayline/",
+      "title": "Virtual Model Railway in Your Browser — BAYLINE"
+    },
+    {
+      "route": "guides/bayline-controls/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/guides/bayline-controls/",
+      "title": "BAYLINE Controls & Tabletop Layout Guide"
+    },
+    {
+      "route": "guides/how-built/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/guides/how-built/",
+      "title": "How the Three.js Miniature Worlds Are Built"
+    },
+    {
+      "route": "guides/bayport-day-night/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/guides/bayport-day-night/",
+      "title": "BAYPORT Day-to-Night Airport Tour"
+    },
+    {
+      "route": "guides/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/guides/",
+      "title": "Field Guides to the Miniature Worlds"
+    },
+    {
+      "route": "about/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/about/",
+      "title": "About Simulated World & the Workshop"
+    },
+    {
+      "route": "privacy/",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/privacy/",
+      "title": "Privacy & Analytics Choices"
+    },
+    {
+      "route": "worlds/bayport/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/worlds/bayport/",
+      "title": "免费在线微缩机场模拟器 — BAYPORT"
+    },
+    {
+      "route": "guides/bayport-controls/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/guides/bayport-controls/",
+      "title": "BAYPORT 操作与沙盘布局指南"
+    },
+    {
+      "route": "worlds/bayline/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/worlds/bayline/",
+      "title": "浏览器里的虚拟模型铁路 — BAYLINE"
+    },
+    {
+      "route": "guides/bayline-controls/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/guides/bayline-controls/",
+      "title": "BAYLINE 操作与沙盘布局指南"
+    },
+    {
+      "route": "guides/how-built/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/guides/how-built/",
+      "title": "Three.js 微缩世界是如何构建的"
+    },
+    {
+      "route": "guides/bayport-day-night/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/guides/bayport-day-night/",
+      "title": "BAYPORT 机场昼夜漫游"
+    },
+    {
+      "route": "guides/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/guides/",
+      "title": "微缩世界探索指南"
+    },
+    {
+      "route": "about/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/about/",
+      "title": "关于 Simulated World 与微缩工坊"
+    },
+    {
+      "route": "privacy/",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/privacy/",
+      "title": "隐私与统计设置"
+    },
+    {
+      "route": "",
+      "zh": false,
+      "url": "https://tianxinzh.github.io/simulated-world/",
+      "title": "Free Browser Simulators: Airports & Model Railways | Simulated World"
+    },
+    {
+      "route": "",
+      "zh": true,
+      "url": "https://tianxinzh.github.io/simulated-world/zh/",
+      "title": "免费浏览器模拟器：微缩机场与模型铁路 | Simulated World"
+    }
+  ],
+  "analyticsConfigured": false,
+  "verificationTagsConfigured": {
+    "google": false,
+    "bing": false
+  }
+}

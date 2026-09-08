@@ -1,0 +1,1 @@
+window.SW_CONFIG=Object.freeze({"baseUrl":"https://tianxinzh.github.io/simulated-world/","measurementId":"","googleVerification":"","bingVerification":"","contentDate":"2026-09-07","basePath":"/simulated-world/"});
