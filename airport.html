@@ -95,7 +95,7 @@ function loadThree(index=0){return new Promise((resolve,reject)=>{const s=docume
 loadThree().then(()=>{try{createAirport();}catch(e){fail(e);}}).catch(fail);
 function fail(e){$('loading').style.display='none';const p=$('failure');p.style.display='block';p.textContent='BAYPORT\n\n'+(e?.message||tr('initError'));console.error(e);}
 function createAirport(){
-const T=THREE, PI=Math.PI, TAU=2*PI, G=11.5;
+const T=THREE, PI=Math.PI, TAU=2*PI, G=23; // BAYLINE-style standing-height workbench
 const clamp=T.MathUtils.clamp, lerp=T.MathUtils.lerp, smooth=(t)=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 let seed=934871;function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
 const scene=new T.Scene();scene.background=new T.Color('#accbd0');scene.fog=new T.Fog('#accbd0',125,240);
@@ -105,14 +105,14 @@ renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicTone
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 renderer.domElement.tabIndex=0;renderer.domElement.setAttribute('aria-label',tr('stageAria'));
 $('stage').appendChild(renderer.domElement);
-const camera=new T.PerspectiveCamera(52,innerWidth/innerHeight,.2,330);
+const camera=new T.PerspectiveCamera(42,innerWidth/innerHeight,.2,360);
 const model=new T.Group();model.position.y=G;scene.add(model);
 const ambient=new T.AmbientLight('#d7e8fa',.7);scene.add(ambient);
 const hemi=new T.HemisphereLight('#e7f6ff','#70624c',1.35);scene.add(hemi);
-const sun=new T.DirectionalLight('#ffebcb',3.1);sun.position.set(-30,68,20);sun.target.position.set(0,G,0);scene.add(sun,sun.target);
+const sun=new T.DirectionalLight('#ffebcb',3.1);sun.position.set(-30,G+56,20);sun.target.position.set(0,G,0);scene.add(sun,sun.target);
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-53,right:53,top:47,bottom:-47,near:1,far:145});sun.shadow.bias=-.00012;sun.shadow.normalBias=.065;
-const fill=new T.DirectionalLight('#b9d9ed',.75);fill.position.set(24,35,-27);scene.add(fill);
-const exhibition=new T.PointLight('#ffd39a',90,72,2);exhibition.position.set(0,28,29);scene.add(exhibition);
+const fill=new T.DirectionalLight('#b9d9ed',.75);fill.position.set(24,G+26,-27);scene.add(fill);
+const exhibition=new T.PointLight('#ffd39a',90,72,2);exhibition.position.set(0,G+17,29);scene.add(exhibition);
 const terminalLight=new T.PointLight('#ffd097',24,23,2);terminalLight.position.set(0,G+3.2,10.2);scene.add(terminalLight);
 const portLight=new T.PointLight('#91eaff',13,18,2);portLight.position.set(25,G+3,16);scene.add(portLight);
 const cityLight=new T.PointLight('#ffcb81',30,30,2);cityLight.position.set(2,G+3,-16);scene.add(cityLight);
@@ -133,7 +133,7 @@ const M={
  navWhite:new T.MeshStandardMaterial({color:'#ffffff',emissive:'#d6f3ff',emissiveIntensity:3}),
  beacon:new T.MeshStandardMaterial({color:'#ff4b29',emissive:'#ff2311',emissiveIntensity:4}),
  emergency:new T.MeshStandardMaterial({color:'#f15b46',emissive:'#ff1708',emissiveIntensity:0}),
- water:new T.MeshStandardMaterial({color:'#227f91',roughness:.32,metalness:.36}),
+ water:new T.MeshStandardMaterial({color:'#3b989b',roughness:.32,metalness:.24}),
 };
 const cube=new T.BoxGeometry(1,1,1), cylinder=new T.CylinderGeometry(1,1,1,8), temp=new T.Object3D(), col=new T.Color();
 let instanceTotal=0;const blockers=[];
@@ -177,6 +177,13 @@ function person(x,z,c='#e3af58',rot=0){V(x,.085,z-.055,.065,.17,.065,'#31404e','
 function cone(x,z){V(x,.035,z,.2,.07,.2,'#ded4b8');V(x,.13,z,.105,.15,.105,'#eb7f39');V(x,.2,z,.08,.035,.08,'#fff0cc');}
 function planter(x,z,w=1.4){V(x,.16,z,w,.32,.7,'#d9c6a5');V(x,.34,z,w-.12,.12,.58,'#619174');for(let i=0;i<6;i++)V(x-w*.4+i*w*.16,.45,z+(rnd()-.5)*.3,.12,.12,.12,i%2?'#eab661':'#dc8e86');}
 function rooftop(x,z,w,d,h){for(let i=0;i<Math.max(1,Math.floor(w/2));i++){V(x-w*.3+i*1.6,h+.15,z,.64,.3,.7,'#a6ae9f');for(let j=0;j<3;j++)V(x-w*.3+i*1.6,h+.305,z-.22+j*.2,.47,.017,.045,'#5b7472');}}
+function sceneryMark(){return {counts:new Map([...B.data].map(([k,v])=>[k,v.length])),children:model.children.length,blockers:blockers.length};}
+function lowerScenery(mark,factor){
+ const stretch=new T.Matrix4().makeScale(1,factor,1);
+ for(const [kind,items] of B.data)for(let i=mark.counts.get(kind)||0;i<items.length;i++)items[i][0].premultiply(stretch);
+ for(let i=mark.children;i<model.children.length;i++){const o=model.children[i];o.position.y*=factor;o.scale.y*=factor;}
+ for(let i=mark.blockers;i<blockers.length;i++){blockers[i].minY*=factor;blockers[i].maxY*=factor;}
+}
 function building(x,z,w,d,h,color,name,opt={}){
  V(x,h/2,z,w,h,d,color);V(x,h+.07,z,w+.15,.14,d+.15,opt.roof||'#f0e5c9');block(x,z,w+.15,d+.15,h+.15,0,name);
  if(opt.windows!==false){const rows=Math.max(1,Math.floor(h/.65)),cols=Math.max(1,Math.floor(w/.5));for(let r=0;r<rows;r++)for(let q=0;q<cols;q++){const xx=x-w*.5+(q+.5)*w/cols,yy=.35+r*(h-.35)/rows;V(xx,yy,z+d/2+.018,w/cols*.63,.3,.03,'#88abb0','glass');V(xx,yy,z-d/2-.018,w/cols*.63,.3,.03,'#779b9d','glass');}for(let r=0;r<rows;r++)for(let q=0;q<Math.floor(d/.6);q++)V(x+w/2+.018,.35+r*(h-.35)/rows,z-d/2+.3+q*.6,.03,.3,.34,'#85a5a7','glass');}
@@ -185,16 +192,23 @@ function building(x,z,w,d,h,color,name,opt={}){
 }
 // ─────────────────────── 实体展桌与房间 ───────────────────────
 function woodTexture(){const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d');g.fillStyle='#95683e';g.fillRect(0,0,1024,512);for(let i=0;i<1800;i++){const y=rnd()*512;g.strokeStyle=`rgba(${rnd()>.45?'55,31,15':'239,185,112'},${.03+rnd()*.11})`;g.lineWidth=.5+rnd()*2;g.beginPath();g.moveTo(0,y);for(let x=0;x<=1024;x+=32)g.lineTo(x,y+Math.sin(x*.009+y)*2+Math.sin(x*.034+y)*.6);g.stroke();}for(let y=0;y<512;y+=128){g.fillStyle='rgba(56,36,25,.17)';g.fillRect(0,y,1024,2);}const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(3,2);t.anisotropy=8;return t;}
-const wood=new T.MeshStandardMaterial({map:woodTexture(),roughness:.42,metalness:.02});
-meshBox(scene,72,1.35,50,0,0,G-1.125,0,wood);
+const wood=new T.MeshStandardMaterial({map:woodTexture(),color:'#e2bc8a',roughness:.54,metalness:.02});
+// One continuous oak worktop, with the controls recessed into its front apron.
+const worktop=meshBox(scene,70.4,1.15,54.5,0,0,G-1.125,1.0,wood);worktop.name='BAYLINE oak worktop';
 const roomB=new Batch(scene);
-roomB.box(0,G-2.6,23.15,67,2.15,.6,'#724b30');roomB.box(0,G-2.6,-23.15,67,2.15,.6,'#724b30');
-for(const x of [-31.4,31.4])for(const z of [-20.7,20.7]){roomB.box(x,(G-1.8)/2,z,2.1,G-1.8,2.1,'#745236');roomB.box(x,.2,z,2.22,.4,2.22,'#3a4442','metal');}
-for(const x of[-31.4,31.4])roomB.box(x,2.5,0,1.0,.9,42,'#785334');roomB.box(0,2.5,-20.7,63,.9,1,'#785334');
-roomB.box(0,-.28,0,210,.5,175,'#a39b87');
-for(let x=-90;x<100;x+=5){roomB.box(x,-.013,9,.026,.012,155,'#8e8777');for(let z=-65;z<85;z+=14)roomB.box(x+2.5,-.007,z+(Math.floor(x/5)%2)*7,4.97,.01,.024,'#948b7c');}
-roomB.box(0,30,-43,210,60,.7,'#c9c5b2');roomB.box(-85,30,0,.7,60,86,'#adb9b0');
-roomB.box(0,1.0,-42.5,210,2,.28,'#89998d');roomB.box(0,2.2,-42.35,210,.12,.34,'#ded7bf');
+for(const z of[-23.15,25.7])meshBox(scene,67,1.6,.65,0,0,G-2.3,z,wood);
+for(const x of[-32.2,32.2])meshBox(scene,.65,1.6,48.85,0,x,G-2.3,1.275,wood);
+for(const x of[-31.4,31.4])for(const z of[-20.7,23.4]){
+ meshBox(scene,2.1,G-1.8,2.1,0,x,(G-1.8)/2,z,wood);
+ roomB.box(x,.2,z,2.22,.4,2.22,'#29393a','metal');
+}
+for(const x of[-31.4,31.4])meshBox(scene,.8,.85,44.1,0,x,G*.36,1.35,wood);
+for(const z of[-20.7,23.4])meshBox(scene,62.8,.85,.8,0,0,G*.36,z,wood);
+roomB.box(0,-.28,0,210,.5,175,'#48514e');
+for(let x=-90;x<100;x+=5){roomB.box(x,-.013,9,.026,.012,155,'#344946');for(let z=-65;z<85;z+=14)roomB.box(x+2.5,-.007,z+(Math.floor(x/5)%2)*7,4.97,.01,.024,'#354c48');}
+roomB.box(0,42,-43,210,84,.7,'#284047');roomB.box(-85,42,0,.7,84,86,'#263b43');
+roomB.box(0,1.0,-42.5,210,2,.28,'#526660');roomB.box(0,2.2,-42.35,210,.12,.34,'#899889');
+for(let x=-78;x<100;x+=5)roomB.box(x,G*.47,-42.56,.065,G*.74,.05,'#3b5555');
 // 房间的三扇大窗；天空直接由着色器计算。
 const skyUniforms={top:{value:new T.Color('#63adc9')},bottom:{value:new T.Color('#e5f1e4')},time:{value:0},night:{value:0}};
 const skyMat=new T.ShaderMaterial({uniforms:skyUniforms,side:T.DoubleSide,vertexShader:'varying vec2 uv0; void main(){uv0=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`varying vec2 uv0; uniform vec3 top; uniform vec3 bottom; uniform float time; uniform float night;
@@ -203,14 +217,23 @@ void main(){vec3 c=mix(bottom,top,smoothstep(0.,1.,uv0.y));float clouds=step(.77
 #include <tonemapping_fragment>
 #include <colorspace_fragment>
 }`});
-for(let x of [-48,0,48]){const panel=new T.Mesh(new T.PlaneGeometry(39,24),skyMat);panel.position.set(x,31,-42.58);scene.add(panel);for(const xx of [x-20,x+20])roomB.box(xx,31,-42,1.0,26,.8,'#737f76');for(const yy of [18.5,43.5])roomB.box(x,yy,-42,41,1,.8,'#737f76');roomB.box(x,31,-41.8,.65,25,1,'#a4aea1');roomB.box(x,31,-41.8,40,.5,1,'#a4aea1');roomB.box(x,18,-41.2,42,.5,2.3,'#eee4c9');}
-label('THE BAY AREA',-30,13,-42.3,20,2.3,{fg:'#435c57',size:74,weight:'600'},scene);
-label('IN MINIATURE   /   EXHIBIT 07',-30,10.6,-42.25,15,1.0,{fg:'#65736b',size:44,weight:'500'},scene);
-label('A LITTLE WORLD.\nALWAYS IN MOTION.',30,11.8,-42.25,18,3.6,{fg:'#526963',size:60,weight:'600'},scene);
+// Smaller sky windows keep the airport, rather than the room, in the foreground.
+for(const x of[-48,48]){
+ const panel=new T.Mesh(new T.PlaneGeometry(26,13),skyMat);panel.position.set(x,G+13,-42.58);scene.add(panel);
+ for(const xx of[x-13.5,x+13.5])roomB.box(xx,G+13,-42,.8,14.5,.8,'#536b67');
+ for(const yy of[G+6,G+20])roomB.box(x,yy,-42,27.8,.8,.8,'#536b67');
+ roomB.box(x,G+13,-41.8,.45,13.5,.9,'#81918a');roomB.box(x,G+6,-41.2,28,.4,1.6,'#baae8a');
+}
+label('SAN FRANCISCO',9,G+19,-42.3,22,3.4,{bg:'#253f46',fg:'#dbc397',size:72,border:true},scene);
+label('BAYPORT  /  AVIATION WORKSHOP',-21,G+13,-42.3,22,2.0,{bg:'#233c42',fg:'#b5c6b6',size:52,border:true},scene);
+for(const [x,y,w] of[[-23,G+7,24],[22,G+11,18]])meshBox(scene,w,.45,2.1,0,x,y,-40.9,wood);
+for(let i=0;i<9;i++)roomB.box(-32+i*1.55,G+8.4,-41.05,.82,2.4+(i%3)*.16,.95,['#ab8960','#688a81','#bc8d69','#59727b'][i%4]);
 roomB.flush();
 // 分层土地基座，保留显眼的木质桌沿。
-V(0,-.3,0,68,.6,46,'#d3bd8c');V(-5.4,-.105,0,57.2,.21,46,'#a8b193');V(28.8,-.065,0,10.4,.25,46,'#2c8091');
+V(0,-.3,0,68,.6,46,'#d3bd8c');V(-5.4,-.105,0,57.2,.21,46,'#a3b58c');V(28.8,-.065,0,10.4,.25,46,'#2c8091');
 V(0,-.34,23.03,68,.28,.16,'#355e5e');
+for(const z of[-23.35,23.25])meshBox(model,68.6,.27,.20,0,0,-.21,z,wood);
+for(const x of[-34.2,34.2])meshBox(model,.20,.27,46.8,0,x,-.21,-.05,wood);
 const waterSurface=new T.Mesh(new T.PlaneGeometry(10.5,46),M.water);waterSurface.rotation.x=-PI/2;waterSurface.position.set(28.75,.068,0);model.add(waterSurface);
 for(let i=0;i<250;i++){const x=24+rnd()*9.7,z=-22.7+rnd()*45.4;V(x,.076,z,.1+rnd()*.9,.009,.035,'#70afb3');}
 for(let z=-22.5;z<23;z+=.45){V(23.4+rnd()*.28,.14,z,.38+rnd()*.18,.28,.36,'#b5b29a');}
@@ -245,12 +268,14 @@ road(0,10.46,29.4,1.43);roadDashes(-14,14,10.46,.11,1.0);
 for(let i=0;i<8;i++){const x=-30+i*1.9,z=-19.5+(i%2)*.7,s=2.0+rnd()*1.2;for(let j=0;j<4;j++)V(x,j*.43+.15,z,s*2-j*.75,.5,5.3-j*.9,['#8d997b','#829779','#789177','#799778'][j]);}
 for(let i=0;i<44;i++)pine(-32+rnd()*16,-22.3+rnd()*5.3,.65+rnd()*.45);
 road(20,-17.1,1.3,3.5);road(22.3,3.3,1.12,35.5);road(2.1,-15.3,37.8,1.25);roadDashes(-16,20.5,-15.3);
+const skylineMark=sceneryMark();
 const cityColors=['#c8b997','#adc0b2','#86a7a5','#d7c9ad','#baad97','#95b4b1'];
 for(let i=0;i<10;i++){const x=-13+i*3.4;const h=1.5+rnd()*3.4;building(x,-21,2.25,2.5,h,cityColors[i%6],'',{sign:false});}
 for(let i=0;i<9;i++){if(i===2||i===5)continue;const x=-12+i*3.65;building(x,-17.85,2.3,2.45,1.25+rnd()*2.3,cityColors[(i+2)%6],'',{sign:false});}
 // 阶梯状的金字塔地标，非真实建筑复刻。
 for(let j=0;j<15;j++){const w=2.15-j*.126;V(-4.7,.23+j*.43,-17.8,w,.45,w,'#dfd6b7');for(let s of[-1,1])V(-4.7,.3+j*.43,-17.8+s*(w/2+.012),w*.65,.19,.025,'#9ab4b2','glass');}V(-4.7,7.03,-17.8,.075,.8,.075,'#eee5c9');block(-4.7,-17.8,2.2,2.2,7.45,0,'pyramid');
 for(let j=0;j<13;j++){let w=j<9?2.65:2.65-(j-8)*.32;V(6.3,.28+j*.47,-18.3,w,.46,2.0,'#94b9bc');for(let s of[-1,1])V(6.3,.31+j*.47,-18.3+s*1.009,w*.86,.23,.027,'#aacaca','glass');}block(6.3,-18.3,2.7,2.1,6.3,0,'bay tower');
+lowerScenery(skylineMark,.76);
 for(let x=-15;x<21;x+=3.7){lamp(x,-16.2,1.5);tree(x+.65,-16.25,.65);}
 label('DOWNTOWN  /  THE BAY',5,.1,-14.28,7,.48,{ground:true,fg:'#e2e2c8',size:52,pad:2});
 const bridgeZ=-18.7,deckY=2.6;
@@ -262,6 +287,7 @@ for(let s of[-1,1])for(let x=22.1;x<33.9;x+=.21){const y=2.98+2.75*Math.pow(Math
 // 桥头的独立上坡段，车辆有自己的高架往返路线。
 beam(B,new T.Vector3(20.0,.13,bridgeZ),new T.Vector3(22.0,deckY,bridgeZ),1.0,'#918477',1.8);
 // ─────────────────────── 航站楼、廊桥、塔台 ───────────────────────
+const terminalMark=sceneryMark();
 building(.5,13.3,25,3.4,2.05,'#e3ddc3','',{windows:false,hvac:false});
 for(let x=-11.4;x<13;x+=1.45){V(x,1.34,11.58,1.12,1.21,.075,'#80aeb4','glass');V(x,1.29,15.02,1.12,1.14,.075,'#7ca6aa','glass');V(x-.64,1.3,11.48,.13,1.5,.28,'#c0bda8');}
 // 大屋顶与略高的中央大厅。
@@ -272,16 +298,19 @@ V(.5,3.03,15.0,5.5,.62,.07,'#8cbfc3','glass');
 label('BAYPORT INTERNATIONAL',.5,2.92,15.075,5.9,.59,{bg:'#28575c',fg:'#f3e5c5',size:56});
 label('BPI',.5,3.72,13.3,3.05,1.05,{ground:true,fg:'#547f7a',size:100,pad:4});
 block(.5,13.3,6.5,3.65,3.58,0,'terminal central hall');
+lowerScenery(terminalMark,.80);
 for(let x of[-11.5,12.5]){planter(x,15.6,1.9);lamp(x,15.8,1.4);}
 for(let i=0;i<28;i++)person(-10.8+rnd()*22,15.3+rnd()*.48,['#edc266','#bd7660','#57747a','#6c91a1'][i%4]);
 // 控制塔的八边形感觉用阶梯体块构成。
+const towerMark=sceneryMark();
 V(-18,3.05,7.3,1.12,6.1,1.12,'#d4c6a5');V(-18,.2,7.3,2.55,.4,2.5,'#d0c2a2');V(-18,5.75,7.3,2.5,.36,2.2,'#ddd4b8');
 V(-18,6.29,7.3,2.25,.8,2.05,'#58898d','glass');V(-18,6.76,7.3,2.65,.19,2.4,'#e7ddbd');
 for(let x of[-18.85,-18,-17.15])V(x,6.27,8.35,.095,.82,.08,'#e0d4b2');
 V(-18,7.15,7.3,.11,.68,.11,'#87998c');block(-18,7.3,2.65,2.4,7.5,0,'control tower');
 label('BPI',-18,5.0,7.87,.88,.48,{fg:'#4f7774',size:72});
-const radar=new T.Group();radar.position.set(-18,7.65,7.3);model.add(radar);const rb=new Batch(radar);rb.box(0,0,0,1.3,.1,.2,'#d5bb84');rb.box(0,.22,0,1.15,.42,.12,'#477e80');for(let i=-2;i<=2;i++)rb.box(i*.22,.22,.08,.05,.43,.04,'#a4d0c1');rb.flush();
+const radar=new T.Group();radar.position.set(-18,7.65,7.3);model.add(radar);const rb=new Batch(radar);rb.box(0,0,0,1.3,.1,.2,'#d5bb84');rb.box(0,.22,0,1.15,.42,.12,'#477e80');for(let i=-2;i<=2;i++)rb.box(i*.22,.22,.08,.05,.43,.04,'#a4d0c1');rb.flush();lowerScenery(towerMark,.72);
 // 维修机库是三面墙和屋顶，飞机实际停在空的内部，而不是实心建筑中。
+const hangarMark=sceneryMark();
 V(-26,.045,9,8.0,.09,5.3,'#a6ad99');
 for(let x of[-29.85,-22.15]){V(x,1.72,9,.3,3.44,5.0,'#a4b1a8');block(x,9,.3,5.0,3.44,0,'hangar side');}
 V(-26,1.72,11.45,7.5,3.44,.3,'#b6bfb1');block(-26,11.45,7.5,.3,3.44,0,'hangar back');
@@ -290,6 +319,7 @@ for(let i=0;i<10;i++)V(-29.55+i*.79,3.68,9,.12,.12,5.1,'#bac6b6');
 label('PACIFIC  /  MRO',-26,3.18,6.47,5.9,.55,{bg:'#35656a',fg:'#f4e6c5',size:55});
 V(-29.18,1.3,6.48,.9,2.5,.13,'#7d9188');V(-22.82,1.3,6.48,.9,2.5,.13,'#7d9188');
 for(let x of[-28.6,-26,-23.4])V(x,3.29,8.8,.8,.05,.2,'#ffffff','city');
+lowerScenery(hangarMark,.84);
 building(-26,14.0,8,2.55,1.8,'#bbae8f','BAY CARGO',{windows:false,signColor:'#5b6f61'});
 for(let x=-29.2;x<-22.6;x+=1.6){V(x,.57,12.69,1.15,1.1,.07,'#667a72');V(x,.09,12.3,1.25,.18,.75,'#ccc4a9');}
 // 独立燃油区，与飞机滑行路径和消防通道分离。
@@ -313,8 +343,10 @@ block(-9,19.05,7.25,3.3,1.99,0,'parking garage');
 label('P',-9,1.13,20.72,.68,.65,{fg:'#f8ebc5',bg:'#476c65',size:86,pad:6});
 building(-1.0,19.05,5.5,3.0,1.3,'#e2d0a6','RENT A CAR',{signColor:'#ad7847',windows:false});
 for(let x=-3.3;x<1.4;x+=.72)V(x,.74,20.58,.52,.61,.04,'#729c9a','glass');
+const hotelMark=sceneryMark();
 building(6.0,19.05,4.0,3.1,3.7,'#d5ba97','BAYVIEW HOTEL',{signColor:'#7d624e'});
 V(6,3.94,19.05,4.3,.28,3.4,'#e9d6b1');
+lowerScenery(hotelMark,.66);
 planter(9.0,19.2,1.5);tree(9.4,20.2,.9);
 V(13.5,.04,19.2,6.9,.1,3.0,'#aeb89d');
 for(let x of[10.55,16.45])tree(x,20.2,.8);
@@ -442,8 +474,8 @@ function plane(kind,paint,scale=1){
  const item={group,kind,length:2*Math.max(length*.535+.07,length*.53+.17,length*.565)*scale,span:(wing+.35)*scale,height:(cy+1.36)*scale,scale,bounds:localBounds};
  aircraft.push(item);return item;
 }
-const departures=plane('narrow','#bd7651',.96);
-const arrivals=plane('wide','#487e8b',.94);
+const departures=plane('narrow','#bd7651',1.10);
+const arrivals=plane('wide','#487e8b',1.08);
 const gatePlanes=[plane('wide','#467d80',.86),plane('narrow','#d39054',.88),plane('narrow','#73988a',.82),plane('narrow','#567e99',.87)];
 for(let i=0;i<4;i++){gatePlanes[i].group.position.set([-10,-3,4,11][i],.1,7.2);gatePlanes[i].group.rotation.y=-PI/2;}
 const cargoPlane=plane('cargo','#537a7b',.88);cargoPlane.group.position.set(-26,.1,8.50);cargoPlane.group.rotation.y=PI/2;
@@ -538,11 +570,11 @@ const arrivalCurve=new T.CatmullRomCurve3([
  [35,14,-20],[21,14.5,-29],[-5,14.5,-30],[-29,12,-25],[-36,6,-16],[-34,2.4,-11.5],[-30,.5,-11.5],[-28,0,-11.5]
 ].map(p=>new T.Vector3(...p)),false,'centripetal',.5);
 departureCurve.arcLengthDivisions=1000;arrivalCurve.arcLengthDivisions=1000;
-const flight={depProgress:0,arrProgress:.867,depWait:8,arrWait:0,depLaps:0,arrLaps:0,queued:false};
+const flight={depProgress:0,arrProgress:.969,depWait:4,arrWait:0,depLaps:0,arrLaps:0,queued:false};
 function flightPosition(curve,u){const p=curve.getPointAt(clamp(u,0,1)),t=curve.getTangentAt(clamp(u,0,1));p.y=Math.max(0,p.y)+.1;if(p.y<.12)t.y=0;return {p,t};}
 // ─────────────────────── 桌前 3D 实体操作台 ───────────────────────
 // 控件皆为场景网格和 Raycaster 命中目标，不使用 HTML 按钮/输入框。
-const consoleGroup=new T.Group();consoleGroup.position.set(0,G-.33,26.25);consoleGroup.rotation.x=.17;scene.add(consoleGroup);
+const consoleGroup=new T.Group();consoleGroup.position.set(0,G-.33,25.3);consoleGroup.rotation.x=.10;scene.add(consoleGroup);
 const consoleB=new Batch(consoleGroup);
 consoleB.box(0,-.17,0,54,.82,4.8,'#77583b');consoleB.box(0,.29,0,53.4,.19,4.35,'#244844');
 consoleB.box(0,.41,0,52.5,.06,4.05,'#2c5049');
@@ -587,13 +619,13 @@ const emergencyButton=pushButton('emergency','#c97453','EMERGENCY','AIRPORT FIRE
 const controlLEDs={};for(const key of ['speed','day','runway','city','takeoff','emergency']){const mat=new T.MeshStandardMaterial({color:'#abc798',emissive:'#8dd58a',emissiveIntensity:1.1});const led=meshBox(consoleGroup,.14,.07,.14,0,cx[key]+2.35,.52,-.70,mat);controlLEDs[key]=led;}
 // 紧急按钮的防误触护圈（保留可点击空间，不使用覆盖式 HTML）。
 const guard=new Batch(consoleGroup);for(let s of[-1,1])guard.box(cx.emergency+s*1.05,.73,0,.12,.43,1.92,'#cbb38b','metal');guard.flush();
-meshBox(scene,54.1,1.9,.24,0,0,G-1.55,28.64,wood);
+meshBox(scene,54.1,1.65,.24,0,0,G-1.40,28.38,wood);
 const statusCanvas=document.createElement('canvas');statusCanvas.width=1800;statusCanvas.height=132;const statusCtx=statusCanvas.getContext('2d');const statusTexture=new T.CanvasTexture(statusCanvas);statusTexture.colorSpace=T.SRGBColorSpace;
-const statusScreen=new T.Mesh(new T.PlaneGeometry(33,1.00),new T.MeshBasicMaterial({map:statusTexture,toneMapped:false}));statusScreen.position.set(0,G-1.37,28.78);scene.add(statusScreen);
-label('BAYPORT',-22.2,G-1.38,28.79,8.0,.74,{fg:'#efddb4',size:85,pad:6},scene);
-label('INTERNATIONAL',-22.2,G-2.08,28.79,7.8,.39,{fg:'#ddc899',size:50,pad:4},scene);
-label('VOXEL WORLD\nSAN FRANCISCO BAY',22.2,G-1.5,28.79,8.0,1.06,{fg:'#e5d0a6',size:43,pad:7},scene);
-const apronHintOptions={fg:'#ded0af',size:46,pad:4,weight:'500'};const apronHint=label('DRAG TO ORBIT   /   SCROLL TO ZOOM   /   SHIFT-DRAG TO PAN   /   0 TO RESET',0,G-2.19,28.8,32.2,.34,apronHintOptions,scene);
+const statusScreen=new T.Mesh(new T.PlaneGeometry(33,1.00),new T.MeshBasicMaterial({map:statusTexture,toneMapped:false}));statusScreen.position.set(0,G-1.37,28.52);scene.add(statusScreen);
+label('BAYPORT',-22.2,G-1.38,28.53,8.0,.74,{fg:'#efddb4',size:85,pad:6},scene);
+label('INTERNATIONAL',-22.2,G-2.08,28.53,7.8,.39,{fg:'#ddc899',size:50,pad:4},scene);
+label('VOXEL WORLD\nSAN FRANCISCO BAY',22.2,G-1.5,28.53,8.0,1.06,{fg:'#e5d0a6',size:43,pad:7},scene);
+const apronHintOptions={fg:'#ded0af',size:46,pad:4,weight:'500'};const apronHint=label('DRAG TO ORBIT   /   SCROLL TO ZOOM   /   SHIFT-DRAG TO PAN   /   0 TO RESET',0,G-2.19,28.54,32.2,.34,apronHintOptions,scene);
 // ─────────────────────── 世界状态与昼夜灯光 ───────────────────────
 const state={time:0,simTime:0,speed:1,paused:false,sound:false,phase:7/36,phaseTransition:null,autoDay:true,runway:true,city:true,emergency:0,emergencyClock:0,firePatrol:0,lastPatrol:0,buttonPress:{city:0,takeoff:0,emergency:0},hover:null};
 const palettes=[
@@ -713,16 +745,29 @@ function updateWorld(realDt){
 }
 // ─────────────────────── 相机与射线拾取 ───────────────────────
 // 安全观察壳：低视角时始终在展桌外；高视角位于整个模型和空中回路上方。
-const view={theta:.38,elevation:.27,radius:72,target:new T.Vector3(0,G+.5,1.0),desiredTheta:.38,desiredElevation:.27,desiredRadius:72,pan:new T.Vector3(0,G+.5,1.0)};
+// 42-degree lens and a 30-degree three-quarter view, shared with BAYLINE.
+// A continuous aspect-aware fit prevents the table from shrinking abruptly on phones.
+const HOME={theta:.46,elevation:.53,target:new T.Vector3(-1.4,G+.5,1.0)};
+function homeRadius(){
+ const aspect=innerWidth/innerHeight,tanY=Math.tan(camera.fov*PI/360),tanX=tanY*aspect;
+ const st=Math.sin(HOME.theta),ct=Math.cos(HOME.theta),se=Math.sin(HOME.elevation),ce=Math.cos(HOME.elevation);
+ const eye=new T.Vector3(st*ce,se,ct*ce),right=new T.Vector3(ct,0,-st),up=new T.Vector3(-st*se,ce,-ct*se);
+ let radius=76;
+ for(const x of[-35.2,35.2])for(const z of[-26.25,28.8])for(const y of[G-2.5,G+1]){
+  const p=new T.Vector3(x,y,z).sub(HOME.target),depth=p.dot(eye);
+  radius=Math.max(radius,depth+Math.abs(p.dot(right))/(tanX*.92),depth+Math.abs(p.dot(up))/(tanY*.80));
+ }
+ return radius;
+}
+const view={theta:HOME.theta,elevation:HOME.elevation,radius:homeRadius(),target:HOME.target.clone(),desiredTheta:HOME.theta,desiredElevation:HOME.elevation,desiredRadius:homeRadius(),pan:HOME.target.clone()};
 function updateCamera(dt,immediate=false){
  const k=immediate?1:1-Math.exp(-dt*12);view.theta=lerp(view.theta,view.desiredTheta,k);view.elevation=lerp(view.elevation,view.desiredElevation,k);view.radius=lerp(view.radius,view.desiredRadius,k);view.target.lerp(view.pan,k);
  const r=view.radius,c=Math.cos(view.elevation);camera.position.set(view.target.x+Math.sin(view.theta)*r*c,view.target.y+Math.sin(view.elevation)*r,view.target.z+Math.cos(view.theta)*r*c);
- // 防止平移/缩放把镜头带进桌子或飞机活动空间。
+ // Preserve the protected observation shell, above both aircraft flight circuits.
  if(Math.abs(camera.position.x)<39&&camera.position.z<30&&camera.position.y<G+18)camera.position.y=G+18;
  camera.position.x=Math.max(camera.position.x,-79);camera.position.y=Math.max(camera.position.y,G+6);camera.lookAt(view.target);camera.updateMatrixWorld();
 }
-function resetView(){view.desiredTheta=.38;view.desiredElevation=.27;view.desiredRadius=innerWidth/innerHeight<1.1?116:72;view.pan.set(0,G+.5,1.0);}
-if(innerWidth/innerHeight<1.1)view.radius=view.desiredRadius=116;
+function resetView(){view.desiredTheta=HOME.theta;view.desiredElevation=HOME.elevation;view.desiredRadius=homeRadius();view.pan.copy(HOME.target);}
 updateCamera(1,true);scene.updateMatrixWorld(true);
 
 const raycaster=new T.Raycaster(),mouse=new T.Vector2();let gesture=null;const canvas=renderer.domElement;
@@ -740,7 +785,7 @@ canvas.addEventListener('pointerdown',e=>{
 });
 canvas.addEventListener('pointermove',e=>{
  if(activePointers.has(e.pointerId))activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
- if(gesture?.mode==='pinch'){if(activePointers.size!==2)return;const p=[...activePointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),center={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};if(dist>0&&pinchDistance>0)view.desiredRadius=clamp(view.desiredRadius*pinchDistance/dist,34,150);if(pinchCenter)panView(center.x-pinchCenter.x,center.y-pinchCenter.y);pinchDistance=dist;pinchCenter=center;return;}
+ if(gesture?.mode==='pinch'){if(activePointers.size!==2)return;const p=[...activePointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),center={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};if(dist>0&&pinchDistance>0)view.desiredRadius=clamp(view.desiredRadius*pinchDistance/dist,34,Math.max(150,homeRadius()*1.25));if(pinchCenter)panView(center.x-pinchCenter.x,center.y-pinchCenter.y);pinchDistance=dist;pinchCenter=center;return;}
  if(!gesture){const key=pick(e)?.object.userData.control;canvas.style.cursor=key?(key==='speed'?'ns-resize':key==='day'?'ew-resize':'pointer'):'grab';showTooltip(key,e);return;}
  if(e.pointerId!==gesture.id)return;const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;gesture.x=e.clientX;gesture.y=e.clientY;gesture.moved=Math.max(gesture.moved,Math.hypot(e.clientX-gesture.sx,e.clientY-gesture.sy));
  if(gesture.mode==='control'){
@@ -751,13 +796,14 @@ canvas.addEventListener('pointermove',e=>{
 });
 function pointerUp(e,cancel=false){activePointers.delete(e.pointerId);if(gesture?.mode==='pinch'){stopGesture();}else if(gesture&&gesture.id===e.pointerId){const g=gesture;if(!cancel&&g.mode==='control'){if(g.key==='speed'&&g.moved>3)toast(tr('speedToast')+speedText());else if(g.key!=='speed'&&g.moved<8&&pick(e)?.object.userData.control===g.key)trigger(g.key);}gesture=null;canvas.style.cursor='grab';showTooltip(null);}try{canvas.releasePointerCapture(e.pointerId);}catch(_){} }
 canvas.addEventListener('pointerup',e=>pointerUp(e));canvas.addEventListener('pointercancel',e=>pointerUp(e,true));canvas.addEventListener('lostpointercapture',e=>{if(gesture?.id===e.pointerId||gesture?.mode==='pinch')stopGesture();});canvas.addEventListener('pointerleave',()=>{if(!gesture)showTooltip(null);});
-canvas.addEventListener('wheel',e=>{e.preventDefault();view.desiredRadius=clamp(view.desiredRadius*Math.exp(e.deltaY*.00075),34,150);showTooltip(null);},{passive:false});
+canvas.addEventListener('wheel',e=>{e.preventDefault();view.desiredRadius=clamp(view.desiredRadius*Math.exp(e.deltaY*.00075),34,Math.max(150,homeRadius()*1.25));showTooltip(null);},{passive:false});
 function home(){resetView();toast(tr('homeToast'));}
 canvas.addEventListener('dblclick',e=>{const hit=pick(e);if(hit?.object.userData.control==='day')setAutoDay();else if(!hit)home();});
 window.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.target?.matches?.('input,textarea,select,[contenteditable="true"]')||$('guide').classList.contains('open'))return;const key=e.key.toLowerCase();if((key===' '||key==='enter')&&e.target?.closest?.('button'))return;const map={l:'runway',b:'city',n:'day',r:'takeoff',t:'takeoff',e:'emergency',' ':'stop'};if(map[key]){e.preventDefault();if(!e.repeat)trigger(map[key]);}else if(key==='arrowup'||key==='arrowdown'){e.preventDefault();setSpeed(state.speed+(key==='arrowup'?.125:-.125),true);}else if(key==='a'&&!e.repeat)setAutoDay();else if(key==='m'&&!e.repeat)setSound(!state.sound);else if(key==='h'&&!e.repeat)chime();});
 window.addEventListener('blur',stopGesture);
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();stopGesture();toast(tr('webglLost'));});
-window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
+let fittedRadius=homeRadius();
+window.addEventListener('resize',()=>{const zoom=view.desiredRadius/fittedRadius;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();fittedRadius=homeRadius();view.desiredRadius=clamp(fittedRadius*zoom,34,Math.max(150,fittedRadius*1.25));renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});
 // ─────────────────────── 性能自适应与测试接口 ───────────────────────
 // 测试接口只暴露状态和显式步进，不请求外部数据，不影响正常操作。
 function projectControl(key){const object=hitMeshes.find(m=>m.userData.control===key);scene.updateMatrixWorld(true);const p=object.getWorldPosition(new T.Vector3()).project(camera);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}
@@ -773,7 +819,7 @@ function safetySnapshot(){
  for(const o of blockers){if(a.y>=o.maxY||a.y+a.h<=o.minY)continue;const b={x:(o.minX+o.maxX)/2,z:(o.minZ+o.maxZ)/2,hl:(o.maxX-o.minX)/2,hw:(o.maxZ-o.minZ)/2,yaw:0};if(overlap2D(a,b,-.035))issues.push(actors[i].name+' / '+o.name);}}
  return [...new Set(issues)];
 }
-window.__airport={version:'2.0-bayline-aligned',refreshUI,setLanguage,setSpeed,setAutoDay,pauseTraffic,home,openGuide,closeGuide,chime,toggleSound:()=>setSound(!state.sound),state,flight,renderer,scene,camera,model,aircraft,movingActors,blockers,view,departures,arrivals,departureCurve,arrivalCurve,fireTruck,pushTug,train,consoleGroup,controls:cx,projectControl,trigger,safetySnapshot,step:updateWorld,resetView,setDay(p){state.phaseTransition=null;state.autoDay=false;state.phase=((p%1)+1)%1;updateLighting();updateStatus();},getInfo(){return {instances:instanceTotal,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,aircraft:aircraft.length,vehicles:movingActors.length,state:{speed:state.speed,phase:state.phase,city:state.city,runway:state.runway,emergency:state.emergency},flight:{...flight},safety:safetySnapshot()};}};
+window.__airport={version:'2.1-aircraft-framing',refreshUI,setLanguage,setSpeed,setAutoDay,pauseTraffic,home,openGuide,closeGuide,chime,toggleSound:()=>setSound(!state.sound),state,flight,renderer,scene,camera,model,aircraft,movingActors,blockers,view,departures,arrivals,departureCurve,arrivalCurve,fireTruck,pushTug,train,consoleGroup,controls:cx,projectControl,trigger,safetySnapshot,step:updateWorld,resetView,setDay(p){state.phaseTransition=null;state.autoDay=false;state.phase=((p%1)+1)%1;updateLighting();updateStatus();},getInfo(){return {instances:instanceTotal,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,aircraft:aircraft.length,vehicles:movingActors.length,state:{speed:state.speed,phase:state.phase,city:state.city,runway:state.runway,emergency:state.emergency},flight:{...flight},safety:safetySnapshot()};}};
 refreshUI();updateWorld(0);updateLighting();updateStatus();
 let ready=false;
 let previous=performance.now(),sampleFrames=0,sampleTime=0,lowFrames=0;
