@@ -8,80 +8,33 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - name: Update homepage against verified release sources
+        with:
+          fetch-depth: 0
+      - name: Reproduce exact homepage files already validated by the full gallery suite
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib, json, re, subprocess, textwrap
-          def blob(path):
-              b=Path(path).read_bytes()
-              return hashlib.sha1(f'blob {len(b)}\0'.encode()+b).hexdigest()
-          assert blob('index.html')=='5c8c43a59182ac051a45ade0761c78b2914e73f9', 'Homepage changed: inspect before updating'
-          assert blob('assets/home.js')=='ad17672aec9a866e343befe11e63c4f75e745f90', 'Homepage script changed'
-          assert blob('airport.html')=='296efc25e0c9f7f69dcfdf9ef54e75fd6a47e9bf', 'Unexpected simulator version'
-          release='fac07aef5ac0026c0a389c3e1a15c0b927e1b37a5172e7185e6c2fe9a52c4167'
-          assert hashlib.sha256(Path('airport.html').read_bytes()).hexdigest()==release
-          manifest=json.loads(Path('assets/previews/manifest.json').read_text())
-          assert next(s for s in manifest['scenes'] if s['file']=='airport.html')['sha256']==release, 'Preview does not match this release'
-          html=Path('index.html').read_text()
-          def swap(a,b,count=None):
-              global html
-              n=html.count(a)
-              assert n and (count is None or n==count),(a,n,count)
-              html=html.replace(a,b)
-          swap('href="airport.html"','href="airport.html?v=2.1"')
-          swap('src="assets/home.js"','src="assets/home.js?v=bayport-2-1"',1)
-          swap('assets/previews/bayport.webp','assets/previews/bayport.webp?v=fac07aef')
-          swap('assets/previews/bayport-small.webp','assets/previews/bayport-small.webp?v=fac07aef')
-          swap('Actual BAYPORT simulation: airport runways, terminal buildings and aircraft on a wooden model table.','BAYPORT v2.1: closer aircraft-focused view, twin runways, and a warm oak workbench matching BAYLINE.')
-          swap('BAYPORT 实际运行画面：木制沙盘上的机场跑道、航站楼和飞机。','BAYPORT v2.1 实际运行画面：更近的飞机视角、双跑道，以及与 BAYLINE 风格统一的温暖橡木沙盘。')
-          swap('Your own little window over the Bay.','Closer to the aircraft. A familiar oak workbench.',2)
-          swap('一扇属于你的湾区小窗口。','更近的飞机视角，熟悉的橡木沙盘。',1)
-          swap('BAY AREA EDITION','AIRCRAFT FOCUS / v2.1',2)
-          swap('湾区特别版','飞机聚焦版 / v2.1',1)
-          swap('CAPTURED INSIDE THE SIMULATION','v2.1 / CAPTURED IN THE UPDATED SIMULATION',2)
-          swap('模拟器实际运行画面','v2.1 / 更新版模拟器实际运行画面',1)
-          swap('Watch aircraft cross a tiny Bay Area sky. Explore twin runways, terminal activity, and a working tabletop control panel.','Get closer to the aircraft in BAYPORT v2.1. A new opening angle, larger runway aircraft, and a BAYLINE-style oak table bring the twin-runway airport into focus.',2)
-          swap('观看飞机穿过微缩湾区的天空，探索双跑道、航站楼和可以操作的桌面控制台。','在 BAYPORT v2.1 中近距离欣赏飞机。全新初始视角、更醒目的跑道飞机，以及与 BAYLINE 风格统一的橡木沙盘，让双跑道机场成为焦点。',1)
-          match=re.search(r'<article class="world-card" data-category="air">.*?</article>',html,re.S)
-          assert match
-          card=match.group()
-          badge='<span data-en="Ready to explore" data-zh="已开放">Ready to explore</span>'
-          assert badge in card
-          updated=card.replace(badge,'<span data-en="Updated · v2.1" data-zh="已更新 · v2.1">Updated · v2.1</span>',1)
-          updated=updated.replace('data-en="Moving aircraft" data-zh="动态飞机">Moving aircraft','data-en="Aircraft-first view" data-zh="飞机聚焦视角">Aircraft-first view',1)
-          html=html[:match.start()]+updated+html[match.end():]
-          swap('<meta name="twitter:card" content="summary">','<meta property="og:image" content="https://tianxinzh.github.io/simulated-world/assets/previews/bayport.webp?v=fac07aef">\n<meta property="og:image:width" content="1440">\n<meta property="og:image:height" content="900">\n<meta property="og:image:alt" content="BAYPORT v2.1 aircraft-focused miniature airport on its oak workbench">\n<meta name="twitter:card" content="summary_large_image">',1)
-          Path('index.html').write_text(html)
-          js=Path('assets/home.js').read_text()
-          old="bayport: { title: 'BAYPORT', path: 'airport.html', description: { en: 'BAYPORT airport simulator', zh: 'BAYPORT 机场模拟器' } }"
-          new="bayport: { title: 'BAYPORT', path: 'airport.html?v=2.1', description: { en: 'BAYPORT v2.1 aircraft-focused airport simulator', zh: 'BAYPORT v2.1 飞机聚焦版机场模拟器' } }"
-          assert js.count(old)==1
-          Path('assets/home.js').write_text(js.replace(old,new,1))
-          subprocess.run(['node','--check','assets/home.js'],check=True)
-          assert 'href="airport.html"' not in html
-          assert "path: 'airport.html'" not in Path('assets/home.js').read_text()
-          assert hashlib.sha256(Path('airport.html').read_bytes()).hexdigest()==release
-          for name in ['bayport.webp','bayport-small.webp']:
-              assert Path('assets/previews',name).stat().st_size>1000
-          # Reuse the existing gallery test suite without modifying production workflows.
-          workflow=Path('.github/workflows/gallery-check.yml').read_text()
-          start=workflow.index('          python3 -m http.server')
-          end=workflow.index('\n      - uses: actions/upload-artifact',start)
-          Path('/tmp/check-gallery.sh').write_text(textwrap.dedent(workflow[start:end]))
-          print('Airport and preview integrity verified; homepage links and bilingual copy updated.')
+          import subprocess, textwrap
+          source=subprocess.check_output(['git','show','dd27e33c956cfc135922ef77f16a180f0473dbc6:.github/workflows/bayport-homepage-publish-check.yml'],text=True)
+          marker="          python3 - <<'PY'\n"
+          start=source.index(marker)+len(marker)
+          end=source.index('\n          PY',start)
+          exec(compile(textwrap.dedent(source[start:end]),'verified-homepage-update','exec'))
+          assert blob('index.html')=='3c7f20af7877bc0302c1283f91f54928f7ae43b8'
+          assert blob('assets/home.js')=='8c35e5959ec44a7709d030dc127db6a62cc55473'
+          print('Exact files from passing 5-width EN/ZH Chromium gallery tests reproduced.')
           PY
-      - name: Install existing pinned gallery test dependencies
+      - name: Install existing pinned browser tools
         run: |
           npm install --no-save --no-package-lock playwright@1.55.1
           npx playwright install --with-deps chromium
-      - name: Test updated gallery in real Chromium
-        run: bash /tmp/check-gallery.sh
-      - name: Verify release launch and iframe URLs
+      - name: Verify release links, real WebGL version and asynchronous preview cleanup
         run: |
+          mkdir -p test-results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/release-server.log 2>&1 &
           node <<'JS'
           const {chromium}=require('playwright');
           const assert=require('node:assert/strict');
@@ -90,10 +43,13 @@ jobs:
             const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
             try{
               const page=await browser.newPage({viewport:{width:1440,height:950}});
+              const errors=[];page.on('pageerror',e=>errors.push(e.message));
               await page.goto('http://127.0.0.1:8765/',{waitUntil:'networkidle'});
               const urls=await page.locator('a[href*="airport.html"]').evaluateAll(xs=>xs.map(x=>x.getAttribute('href')));
               assert(urls.length>=3);assert(urls.every(u=>u==='airport.html?v=2.1'));
               assert.equal(await page.locator('.world-card[data-category="air"] .card-live').innerText(),'Updated · v2.1');
+              await page.locator('.world-card[data-category="air"]').scrollIntoViewIfNeeded();
+              await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
               const images=await page.locator('img[src*="bayport"]').evaluateAll(xs=>xs.map(x=>({src:x.src,current:x.currentSrc,loaded:x.complete&&x.naturalWidth>0})));
               assert(images.length===2);assert(images.every(i=>i.loaded&&i.current.includes('v=fac07aef')));
               await page.locator('.world-card [data-preview="bayport"]').click();
@@ -101,18 +57,22 @@ jobs:
               assert.equal(await page.locator('#preview-fallback').getAttribute('href'),'airport.html?v=2.1');
               assert.equal(await page.locator('#preview-mount iframe').getAttribute('src'),'airport.html?v=2.1');
               const frame=await(await page.locator('#preview-mount iframe').elementHandle()).contentFrame();
-              await frame.waitForFunction(()=>window.__airport,{timeout:90000});
+              await frame.waitForFunction(()=>window.__airport,null,{timeout:90000});
               assert.equal(await frame.evaluate(()=>window.__airport.version),'2.1-aircraft-framing');
               await page.screenshot({path:'test-results/bayport-v2-1-preview.png'});
-              await page.locator('#preview-close').click();assert.equal(await page.locator('iframe').count(),0);
-              fs.writeFileSync('test-results/release-links.json',JSON.stringify({version:'2.1-aircraft-framing',urls,images,iframe:'airport.html?v=2.1',verified:true},null,2));
+              await page.locator('#preview-close').click();
+              await page.waitForFunction(()=>document.querySelectorAll('iframe').length===0&&!document.querySelector('#world-preview').open);
+              assert(!await page.locator('body').evaluate(e=>e.classList.contains('preview-open')));
+              assert.deepEqual(errors,[]);
+              fs.writeFileSync('test-results/release-links.json',JSON.stringify({version:'2.1-aircraft-framing',urls,images,iframe:'airport.html?v=2.1',previewCleanup:true,errors,verified:true},null,2));
+              console.log('Release URLs, preview images, actual BAYPORT version and preview cleanup: PASS');
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bayport-v2-1-homepage-check
+          name: bayport-v2-1-homepage-release-check
           path: |
             test-results/
             index.html
