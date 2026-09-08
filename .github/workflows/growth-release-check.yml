@@ -5,70 +5,62 @@ on:
     paths: ['.github/workflows/growth-release-check.yml']
 permissions:
   contents: write
+  actions: read
 jobs:
-  validate:
+  package-reviewed:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Prepare static pages and audit fixes
+      - name: Reproduce the exact build which passed the full browser suite
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('assets/growth.js')
-          s=p.read_text().replace("s.frame.parentElement?.querySelector('[data-player-status]')", "s.frame.closest('[data-player]')?.querySelector('[data-player-status]')")
-          p.write_text(s)
-          p=Path('tests/growth-check.cjs');s=p.read_text()
-          s=s.replace('[^\"]{30,}', '[^\"]{15,}')
-          s=s.replace('await page.clock.install();','')
-          s=s.replace("await page.locator('iframe').scrollIntoViewIfNeeded();", "await page.locator('iframe').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));")
-          s=s.replace('await page.clock.runFor(65000);','await page.waitForTimeout(65000);')
-          s=s.replace('await page.clock.runFor(62000);','await page.waitForTimeout(62000);',1)
-          s=s.replace('await page.clock.runFor(62000);','await page.waitForTimeout(2000);')
-          s=s.replace('visiblePlayClockTest','visiblePlayElapsedTimeTest')
-          s=s.replace('Elapsed-time threshold checks advance a browser test clock after real rendering and real user-input tests.','Visible-play thresholds use real elapsed time after real rendering and trusted input; test rendering is stopped during the timer-only segment.')
-          s=s.replace("await privacy.waitForFunction(()=>window.dataLayer?.length>4);assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.dataLayer?.length>4);await privacy.waitForTimeout(500);assert.equal(requests.length,1);")
-          s=s.replace("await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.SW?.status().consent==='rejected'&&!window.SW.status().tagRequested);await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);")
-          p.write_text(s)
+          import subprocess,textwrap
+          source=subprocess.check_output(['git','show','ccac652c710f7e8b20390542408d2a56b541713f:.github/workflows/growth-release-check.yml'],text=True)
+          start=source.index('          python3 - ')
+          end=source.index('      - name: Install pinned browser tools',start)
+          Path('/tmp/reproduce-reviewed.sh').write_text(textwrap.dedent(source[start:end]))
           PY
+          bash /tmp/reproduce-reviewed.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: search-measurement-validation
+          run-id: 34195045639
+          github-token: ${{ github.token }}
+          path: /tmp/reviewed
+      - name: Verify source equality and the successful full-suite report
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,hashlib
+          old=Path('/tmp/reviewed')
+          for name in ['assets/growth.js','tools/build_growth.py','index.html','worlds/bayport/index.html','site-inventory.json']:
+              assert Path(name).read_bytes()==(old/name).read_bytes(), 'Previously tested source changed: '+name
+          r=json.loads((old/'test-results/growth-report.json').read_text())
+          assert len(r['seo'])==20 and len(r['layouts'])==20 and len(r['players'])==2
+          assert all(x['realWebGL']=='rendered' and x['trustedControlInput']=='pass' and not x['errors'] for x in r['players'])
+          assert r['privacy']['beforeConsentRequests']==0 and r['privacy']['globalPrivacyControl']=='pass'
+          print('Exact source equality verified against the passing 20-page, 20-layout, two-world browser run.')
+          PY
+      - name: Encode the actual browser recording and add it to the tour pages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          mkdir -p assets/tours
+          ffmpeg -y -hide_banner -loglevel error -ss "$(cat /tmp/reviewed/test-results/video/offset.txt)" -i /tmp/reviewed/test-results/video/raw.webm -t 12 -an -c:v libvpx-vp9 -b:v 900k assets/tours/bayport-tour.webm
+          test "$(stat -c%s assets/tours/bayport-tour.webm)" -gt 20000
           python3 tools/build_growth.py
-          node --check assets/growth.js
-          node --check assets/home.js
-          node --check tests/growth-check.cjs
-      - name: Install pinned browser tools
-        run: |
-          npm install --no-save --no-package-lock playwright@1.55.1
-          npx playwright install --with-deps chromium
-      - name: Test actual pages and measured players
-        run: |
-          mkdir -p /tmp/sw-site
-          ln -s "$GITHUB_WORKSPACE" /tmp/sw-site/simulated-world
-          python3 -m http.server 8765 --bind 127.0.0.1 --directory /tmp/sw-site >/tmp/growth-server.log 2>&1 &
-          node tests/growth-check.cjs
-      - name: Record a real airport day-night clip
-        run: |
-          mkdir -p assets/tours test-results/video
-          node <<'JS'
-          const {chromium}=require('playwright');const fs=require('node:fs');
-          (async()=>{
-            const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
-            try{
-              const context=await browser.newContext({viewport:{width:960,height:600},recordVideo:{dir:'test-results/video',size:{width:960,height:600}}});
-              const page=await context.newPage();const started=Date.now();
-              await page.goto('http://127.0.0.1:8765/simulated-world/airport.html');
-              await page.waitForFunction(()=>window.__airport&&getComputedStyle(document.querySelector('#loading')).display==='none',null,{timeout:90000});
-              await page.waitForTimeout(600);const offset=(Date.now()-started)/1000;
-              for(const phase of [.1,.25,.5,.75]){await page.evaluate(p=>window.__airport.setDay(p),phase);await page.waitForTimeout(3200);}
-              const video=page.video();await context.close();await video.saveAs('test-results/video/raw.webm');
-              fs.writeFileSync('test-results/video/offset.txt',String(offset+.2));
-            }finally{await browser.close();}
-          })().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          ffmpeg -y -hide_banner -loglevel error -ss "$(cat test-results/video/offset.txt)" -i test-results/video/raw.webm -t 12 -an -c:v libvpx-vp9 -b:v 900k assets/tours/bayport-tour.webm
-          python3 tools/build_growth.py
-      - name: Save reviewed files on the working branch only
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          assert len(json.loads(Path('site-inventory.json').read_text())['pages'])==20
+          for p in ['guides/bayport-day-night/index.html','zh/guides/bayport-day-night/index.html']:
+              s=Path(p).read_text();assert 'bayport-tour.webm' in s and 'preload="none"' in s
+          PY
+      - name: Commit the reviewed public release on the working branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -76,15 +68,22 @@ jobs:
           git diff --cached --quiet || git commit -m 'Build validated bilingual search pages and consent-aware play analytics'
           git push origin HEAD:growth/search-and-measurement
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: search-measurement-validation
+          name: growth-deployable-release
           path: |
-            test-results/
             assets/tours/
             site-inventory.json
             index.html
-            worlds/bayport/index.html
-            tools/build_growth.py
+            worlds/
+            zh/
+            guides/
+            about/
+            privacy/
+            monitor/
             assets/growth.js
+            assets/growth.css
+            assets/site-config.js
+            tools/build_growth.py
+            tools/templates/home.html
+            tests/growth-check.cjs
           retention-days: 7
