@@ -1,86 +1,60 @@
 name: Verify public site
-
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/site-smoke.yml']
   workflow_run:
-    workflows: ['Deploy to GitHub Pages', 'pages build and deployment']
+    workflows: ['Deploy to GitHub Pages', 'pages build and deployment', 'Configure traffic integrations']
     types: [completed]
   workflow_dispatch:
-
 permissions: {}
-
 concurrency:
   group: public-site-smoke
   cancel-in-progress: false
-
 jobs:
-  homepage:
+  public-pages:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     steps:
-      - name: Verify HTTPS response and landing-page content
-        shell: bash
+      - name: Verify deployed content, metadata, sitemap and runtime files
         run: |
           python3 - <<'PY'
-          import json
-          import os
-          import time
-          import urllib.request
-          from html.parser import HTMLParser
-
-          URL = 'https://tianxinzh.github.io/simulated-world/'
-
-          class Page(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.ids = set()
-                  self.translations = 0
-                  self.title_open = False
-                  self.title = ''
-              def handle_starttag(self, tag, attrs):
-                  attrs = dict(attrs)
-                  if 'id' in attrs:
-                      self.ids.add(attrs['id'])
-                  if 'data-en' in attrs and 'data-zh' in attrs:
-                      self.translations += 1
-                  if tag == 'title':
-                      self.title_open = True
-              def handle_endtag(self, tag):
-                  if tag == 'title':
-                      self.title_open = False
-              def handle_data(self, data):
-                  if self.title_open:
-                      self.title += data
-
-          for attempt in range(1, 7):
+          import concurrent.futures, json, os, re, time, urllib.request, urllib.error, xml.etree.ElementTree as ET
+          BASE='https://tianxinzh.github.io/simulated-world/'
+          def get(url):
+              req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'SimulatedWorld-PublicCheck/2.0'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  assert r.status==200,(url,r.status)
+                  return r.read().decode('utf-8')
+          def check(p):
+              url=p['url'];html=get(url+'?release_check='+str(int(time.time())))
+              assert f'<link rel="canonical" href="{url}">' in html,url+' canonical'
+              assert 'hreflang="en"' in html and 'hreflang="zh-Hans"' in html,url+' languages'
+              assert 'application/ld+json' in html,url+' structured data'
+              assert 'content="noindex' not in html,url+' indexability'
+              return {'url':url,'http':200,'canonical':True,'hreflang':True}
+          for attempt in range(6):
               try:
-                  req = urllib.request.Request(URL, headers={'User-Agent': 'SimulatedWorld-SiteCheck/1.0', 'Cache-Control': 'no-cache'})
-                  with urllib.request.urlopen(req, timeout=15) as response:
-                      status = response.status
-                      final_url = response.url
-                      content_type = response.headers.get('Content-Type', '')
-                      html = response.read().decode('utf-8')
-                  assert status == 200, f'Unexpected status: {status}'
-                  assert final_url == URL, f'Unexpected redirect: {final_url}'
-                  assert 'text/html' in content_type, f'Unexpected content type: {content_type}'
-                  page = Page()
-                  page.feed(html)
-                  assert 'Simulated World' in page.title, 'Wrong page title'
-                  assert {'worlds', 'about', 'lang'} <= page.ids, 'Missing landing-page sections'
-                  assert page.translations >= 5, 'Missing bilingual page content'
-                  result = {'url': URL, 'http_status': status, 'title': page.title, 'bilingual_elements': page.translations, 'verification': 'HTTP and HTML structure only; not a simulator or browser interaction test'}
-                  print(json.dumps(result, ensure_ascii=False, indent=2))
-                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
-                      summary.write('## Public homepage verified\n\n')
-                      summary.write(f'- URL: {URL}\n- HTTP status: {status}\n- Title: {page.title}\n- Bilingual elements: {page.translations}\n\n')
-                      summary.write('This verifies HTTP delivery and HTML structure, not simulator functionality or browser interactions.\n')
+                  inventory=json.loads(get(BASE+'site-inventory.json?release_check='+str(int(time.time()))))
+                  assert len(inventory['pages'])==20
+                  with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:pages=list(pool.map(check,inventory['pages']))
+                  sitemap=ET.fromstring(get(BASE+'sitemap.xml'))
+                  assert len(sitemap.findall('{http://www.sitemaps.org/schemas/sitemap/0.9}url'))==20
+                  for path in ['assets/growth.js','assets/site-config.js','assets/home.js','monitor/','tools/campaign-builder/','airport.html','bayline.html']:
+                      body=get(BASE+path)
+                      assert len(body)>100,path
+                      if path in ['airport.html','bayline.html']:
+                          assert 'SW BRIDGE' in body and 'googletagmanager' not in body,path+' standalone constraint'
+                      if path in ['monitor/','tools/campaign-builder/']:assert 'noindex,follow' in body,path+' should not be indexed'
+                  req=urllib.request.Request(BASE+'assets/tours/bayport-tour.webm',method='HEAD')
+                  with urllib.request.urlopen(req,timeout=20) as r:assert r.status==200
+                  robots_url='https://tianxinzh.github.io/robots.txt'
+                  try:robots={'url':robots_url,'status':200,'body':get(robots_url)[:5000]}
+                  except urllib.error.HTTPError as e:robots={'url':robots_url,'status':e.code}
+                  report={'pages':pages,'sitemapEntries':20,'runtimeFiles':'pass','standaloneAnalytics':'absent','tourVideoHTTP':200,'analyticsConfigured':inventory['analyticsConfigured'],'hostRobots':robots,'scope':'HTTP delivery and content checks, not proof of provider analytics delivery or search indexing.'}
+                  print(json.dumps(report,ensure_ascii=False,indent=2))
+                  with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out:out.write('## Public release verified\n\n20 canonical bilingual pages, sitemap, player files, analytics code and tour video are reachable.\n\nAnalytics ID configured: '+str(inventory['analyticsConfigured'])+'. This does not verify provider ownership, analytics delivery or search indexing.\n')
                   break
-              except Exception as error:
-                  print(f'Attempt {attempt}/6 failed: {error}', flush=True)
-                  if attempt == 6:
-                      raise
-                  time.sleep(5)
+              except Exception as e:
+                  print('Attempt',attempt+1,'failed:',str(e),flush=True)
+                  if attempt==5:raise
+                  time.sleep(8)
           PY

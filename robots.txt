@@ -1,0 +1,10 @@
+# Effective only when served at the HOST ROOT /robots.txt.
+# At github.io/simulated-world/robots.txt this does not control crawling.
+# On GitHub Pages submit the sitemap directly; do not claim this config applies to the host.
+User-agent: *
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+Sitemap: https://tianxinzh.github.io/simulated-world/sitemap.xml

@@ -5,18 +5,22 @@
     {
       "file": "bayline.html",
       "title": "BAYLINE — San Francisco Model Railway Workshop",
-      "sha256": "c0205d920ec62369a1df8f65bee33d705c7e1059ed55359ea8fa37442ca7e591",
+      "sha256": "21a76c01f656b9ec70a893042ed5a0c2a6cc82e589357946ac8607e6a43718fb",
       "errors": [],
       "canvasCount": 1,
-      "failed": false
+      "failed": false,
+      "capturedSourceSha256": "c0205d920ec62369a1df8f65bee33d705c7e1059ed55359ea8fa37442ca7e591",
+      "metadataNote": "Same scene visuals; added metadata, language entry and local parent event hooks after capture."
     },
     {
       "file": "airport.html",
       "title": "BAYPORT — San Francisco Bay Miniature Airport",
-      "sha256": "fac07aef5ac0026c0a389c3e1a15c0b927e1b37a5172e7185e6c2fe9a52c4167",
+      "sha256": "1883bcd8f85b55d2fc6905ea866902586b8861b26e07b603cad484145832096e",
       "errors": [],
       "canvasCount": 1,
-      "failed": false
+      "failed": false,
+      "capturedSourceSha256": "fac07aef5ac0026c0a389c3e1a15c0b927e1b37a5172e7185e6c2fe9a52c4167",
+      "metadataNote": "Same scene visuals; added metadata, language entry and local parent event hooks after capture."
     }
   ]
 }

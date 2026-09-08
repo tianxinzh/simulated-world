@@ -1,10 +1,12 @@
+// SW_GROWTH_GALLERY
 /* Progressive enhancement: the gallery and launch links work without JavaScript. */
 (() => {
   'use strict';
   const $ = (selector) => document.querySelector(selector);
   const all = (selector) => Array.from(document.querySelectorAll(selector));
   const storage = { get(key) { try { return localStorage.getItem(key); } catch { return null; } }, set(key, value) { try { localStorage.setItem(key, value); } catch { /* Restricted storage must not break navigation. */ } } };
-  let language = storage.get('sw-language') === 'zh' ? 'zh' : 'en';
+  let language = document.documentElement.lang.startsWith('zh') ? 'zh' : 'en';
+  const root = window.SW_CONFIG.basePath;
   const button = $('#lang');
   const dialog = $('#world-preview');
   const mount = $('#preview-mount');
@@ -23,7 +25,7 @@
     button.textContent = language === 'zh' ? 'EN' : '中文';
     button.setAttribute('aria-label', language === 'zh' ? 'Switch to English' : '切换到中文');
     button.setAttribute('lang', language === 'zh' ? 'en' : 'zh-CN');
-    document.title = language === 'zh' ? 'Simulated World — 湾区微缩世界' : 'Simulated World — Small worlds, brought to life';
+    document.title = language === 'zh' ? '免费浏览器模拟器：微缩机场与模型铁路 | Simulated World' : 'Free Browser Simulators: Airports & Model Railways | Simulated World';
     if (currentWorld) { const frame = mount.querySelector('iframe'); if (frame) frame.title = scenes[currentWorld].description[language]; }
     updateCount();
   }
@@ -32,7 +34,7 @@
     const label = $('#world-count');
     if (label) label.textContent = language === 'zh' ? `显示 ${count} 个世界，共 2 个` : `Showing ${count} of 2 worlds`;
   }
-  button.addEventListener('click', () => { language = language === 'en' ? 'zh' : 'en'; storage.set('sw-language', language); applyLanguage(); });
+  button.addEventListener('click', () => { storage.set('sw-language', language === 'en' ? 'zh' : 'en'); });
   all('.filter').forEach(filter => {
     filter.addEventListener('click', () => {
       const category = filter.dataset.filter;
@@ -53,15 +55,16 @@
         lastTrigger = trigger;
         const scene = scenes[key];
         $('#preview-title').textContent = scene.title;
-        $('#preview-launch').href = scene.path;
-        $('#preview-fallback').href = scene.path;
+        $('#preview-launch').href = root + (language === 'zh' ? 'zh/' : '') + 'worlds/' + key + '/';
+        $('#preview-fallback').href = $('#preview-launch').href;
         const frame = document.createElement('iframe');
         frame.title = scene.description[language];
-        frame.src = scene.path;
+        frame.src = root + (key === 'bayport' ? 'airport.html' : 'bayline.html') + '?embed=1&lang=' + language;
         frame.allow = 'fullscreen';
         frame.setAttribute('allowfullscreen', '');
         frame.referrerPolicy = 'same-origin';
         mount.replaceChildren(frame);
+        window.SWPlayer?.attach(frame, key, 'homepage_preview');
         // No WebGL context or remote dependency is loaded until a preview is requested.
         dialog.showModal();
         document.body.classList.add('preview-open');

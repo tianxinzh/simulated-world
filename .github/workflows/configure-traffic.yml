@@ -1,0 +1,82 @@
+name: Configure traffic integrations
+on:
+  workflow_dispatch:
+    inputs:
+      measurement_id:
+        description: 'Public GA4 G-... measurement ID; blank keeps the current value'
+        required: false
+        type: string
+      google_verification:
+        description: 'Google HTML verification content value only; blank keeps current'
+        required: false
+        type: string
+      bing_verification:
+        description: 'Bing msvalidate.01 content value only; blank keeps current'
+        required: false
+        type: string
+      disable_analytics:
+        description: 'Explicitly remove the GA4 ID and stop optional analytics'
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  configure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Validate public IDs and build the configured site
+        env:
+          INPUT_GA4: ${{ inputs.measurement_id }}
+          INPUT_GOOGLE: ${{ inputs.google_verification }}
+          INPUT_BING: ${{ inputs.bing_verification }}
+          DISABLE_ANALYTICS: ${{ inputs.disable_analytics }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          p=Path('site-config.json');c=json.loads(p.read_text())
+          for env,key,pattern in [('INPUT_GA4','measurementId',r'G-[A-Z0-9]{6,20}'),('INPUT_GOOGLE','googleVerification',r'[A-Za-z0-9_-]{8,200}'),('INPUT_BING','bingVerification',r'[A-Za-z0-9_-]{8,200}')]:
+              value=os.environ.get(env,'').strip()
+              if value:
+                  if not re.fullmatch(pattern,value):raise SystemExit('Invalid '+key+'; use the public content value, never a secret or an HTML tag')
+                  c[key]=value
+          if os.environ.get('DISABLE_ANALYTICS')=='true':c['measurementId']=''
+          p.write_text(json.dumps(c,indent=2)+'\n')
+          PY
+          python3 tools/build_growth.py
+          node --check assets/growth.js
+          node --check assets/home.js
+          python3 tools/package_site.py
+      - name: Preserve configuration and generated pages in the repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site-config.json index.html assets/site-config.js site-inventory.json zh worlds guides about privacy monitor tools/campaign-builder sitemap.xml robots.txt docs/robots-host-root.txt airport.html bayline.html assets/previews/manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Configure consent-gated analytics and site-verification tags'
+            git push origin HEAD:main
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Explain the remaining account checks
+        run: |
+          echo '## Configuration deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Complete ownership verification in Search Console/Bing. Confirm GA4 delivery in Realtime or DebugView after granting consent. This workflow does not create provider accounts, submit sitemaps or guarantee indexing.' >> "$GITHUB_STEP_SUMMARY"
