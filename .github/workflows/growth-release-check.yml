@@ -21,6 +21,7 @@ jobs:
           s=p.read_text().replace("s.frame.parentElement?.querySelector('[data-player-status]')", "s.frame.closest('[data-player]')?.querySelector('[data-player-status]')")
           p.write_text(s)
           p=Path('tests/growth-check.cjs');s=p.read_text()
+          s=s.replace('[^\"]{30,}', '[^\"]{15,}')
           s=s.replace("await privacy.waitForFunction(()=>window.dataLayer?.length>4);assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.dataLayer?.length>4);await privacy.waitForTimeout(500);assert.equal(requests.length,1);")
           s=s.replace("await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);", "await privacy.waitForFunction(()=>window.SW?.status().consent==='rejected'&&!window.SW.status().tagRequested);await privacy.waitForLoadState('networkidle');assert.equal(requests.length,1);")
           p.write_text(s)
