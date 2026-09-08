@@ -4,23 +4,73 @@ on:
     branches: ['refine/bayport-aircraft-framing']
     paths: ['.github/workflows/bayport-framing-review.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  references:
+  review:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Collect exact simulator sources and pinned Three.js for local render tests
+      - name: Apply source-verified framing revision
+        run: |
+          cp airport.html airport-before.html
+          python3 tools/refine_bayport.py airport.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          for i,s in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',Path('airport.html').read_text(),re.S)):
+              p=Path('/tmp/check-'+str(i)+'.js'); p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Real WebGL screenshots and route regression checks
         run: |
           mkdir -p review
-          cp airport.html bayline.html review/
-          cp assets/previews/bayport.webp assets/previews/bayline.webp review/
-          curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js' -o review/three.min.js
-          curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js' -o review/three.module.js
-          sha256sum review/* > review/checksums.txt
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/bayport-server.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+            const report=[];
+            try{
+              const cases=[['airport-before.html','before',1440,900,null],['airport.html','default',1440,900,null],['airport.html','tighter',1440,900,{radius:84}],['airport.html','higher',1440,900,{radius:84,elevation:.61}],['airport.html','night',1440,900,null],['airport.html','portrait',900,1400,null],['airport.html','phone',430,932,null]];
+              for(const [file,name,width,height,cam] of cases){
+                const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+                await page.goto('http://127.0.0.1:8765/'+file,{waitUntil:'domcontentloaded'});
+                await page.waitForFunction(()=>window.__airport,{timeout:90000});
+                await page.evaluate(({cam,name})=>{const a=window.__airport;a.state.paused=true;a.setDay(name==='night'?.5:.11);if(cam){for(const k of ['radius','elevation'])if(cam[k]!=null){a.view[k]=cam[k];a.view['desired'+k[0].toUpperCase()+k.slice(1)]=cam[k];}}},{cam,name});
+                await page.waitForTimeout(1600);
+                if(name==='default')await page.screenshot({path:'review/default-ui.png'});
+                await page.addStyleTag({content:'header,footer,.edition,.scale,.vignette,#toast,#tooltip{visibility:hidden!important}'});
+                await page.screenshot({path:'review/'+name+'.png'});
+                const info=await page.evaluate(()=>{const a=window.__airport;return {version:a.version,camera:a.camera.position.toArray(),radius:a.view.radius,controls:Object.fromEntries(Object.keys(a.controls).map(k=>[k,a.projectControl(k)])),info:a.getInfo()}});
+                report.push({name,width,height,errors,...info});
+                if(errors.length)throw Error(JSON.stringify(errors));
+                if(name==='default'){
+                  const route=await page.evaluate(()=>{const a=window.__airport;a.state.paused=false;a.state.autoDay=false;a.state.speed=1;const hits=new Map();for(let i=0;i<3600;i++){if(i===200||i===2000)a.trigger('emergency');a.step(.2);for(const hit of a.safetySnapshot())if(!hits.has(hit))hits.set(hit,a.state.simTime);}return {simulatedSeconds:a.state.simTime,issues:[...hits],depLaps:a.flight.depLaps,arrLaps:a.flight.arrLaps}});
+                  fs.writeFileSync('review/routes.json',JSON.stringify(route,null,2));
+                }
+                await page.close();
+              }
+              fs.writeFileSync('review/report.json',JSON.stringify(report,null,2));
+              fs.copyFileSync('airport.html','review/airport.html');
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: bayport-framing-references
+          name: bayport-framing-review
           path: review/
-          retention-days: 1
+          retention-days: 3
+      - name: Commit only the reviewed simulator on the working branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add airport.html
+          git commit -m 'Refine BAYPORT aircraft framing and BAYLINE workbench proportions'
+          git push origin HEAD:refine/bayport-aircraft-framing
