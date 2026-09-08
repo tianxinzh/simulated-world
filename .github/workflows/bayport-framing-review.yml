@@ -1,0 +1,26 @@
+name: BAYPORT framing review
+on:
+  push:
+    branches: ['refine/bayport-aircraft-framing']
+    paths: ['.github/workflows/bayport-framing-review.yml']
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Collect exact simulator sources and pinned Three.js for local render tests
+        run: |
+          mkdir -p review
+          cp airport.html bayline.html review/
+          cp assets/previews/bayport.webp assets/previews/bayline.webp review/
+          curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js' -o review/three.min.js
+          curl --fail --location --retry 3 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js' -o review/three.module.js
+          sha256sum review/* > review/checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bayport-framing-references
+          path: review/
+          retention-days: 1
