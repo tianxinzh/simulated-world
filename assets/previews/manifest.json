@@ -1,6 +1,6 @@
 {
   "description": "Actual browser captures of the original simulator files. UI hidden only during capture.",
-  "sourceCommit": "c0b83d138f7153940c6c629c075acaa76ce1308c",
+  "sourceCommit": "86fa7a7e05fdecf1ba305618740912777dad43b4",
   "scenes": [
     {
       "file": "bayline.html",
@@ -13,7 +13,7 @@
     {
       "file": "airport.html",
       "title": "BAYPORT — San Francisco Bay Miniature Airport",
-      "sha256": "fdea390911b48d98a014d7c8b3db9c3dcc0c8746545d6407a31bed80c4613d9e",
+      "sha256": "fac07aef5ac0026c0a389c3e1a15c0b927e1b37a5172e7185e6c2fe9a52c4167",
       "errors": [],
       "canvasCount": 1,
       "failed": false
