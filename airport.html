@@ -623,9 +623,9 @@ meshBox(scene,54.1,1.65,.24,0,0,G-1.40,28.38,wood);
 const statusCanvas=document.createElement('canvas');statusCanvas.width=1800;statusCanvas.height=132;const statusCtx=statusCanvas.getContext('2d');const statusTexture=new T.CanvasTexture(statusCanvas);statusTexture.colorSpace=T.SRGBColorSpace;
 const statusScreen=new T.Mesh(new T.PlaneGeometry(33,1.00),new T.MeshBasicMaterial({map:statusTexture,toneMapped:false}));statusScreen.position.set(0,G-1.37,28.52);scene.add(statusScreen);
 label('BAYPORT',-22.2,G-1.38,28.53,8.0,.74,{fg:'#efddb4',size:85,pad:6},scene);
-label('INTERNATIONAL',-22.2,G-2.08,28.53,7.8,.39,{fg:'#ddc899',size:50,pad:4},scene);
+label('INTERNATIONAL',-22.2,G-1.99,28.53,7.8,.39,{fg:'#ddc899',size:50,pad:4},scene);
 label('VOXEL WORLD\nSAN FRANCISCO BAY',22.2,G-1.5,28.53,8.0,1.06,{fg:'#e5d0a6',size:43,pad:7},scene);
-const apronHintOptions={fg:'#ded0af',size:46,pad:4,weight:'500'};const apronHint=label('DRAG TO ORBIT   /   SCROLL TO ZOOM   /   SHIFT-DRAG TO PAN   /   0 TO RESET',0,G-2.19,28.54,32.2,.34,apronHintOptions,scene);
+const apronHintOptions={fg:'#ded0af',size:46,pad:4,weight:'500'};const apronHint=label('DRAG TO ORBIT   /   SCROLL TO ZOOM   /   SHIFT-DRAG TO PAN   /   0 TO RESET',0,G-2.02,28.54,32.2,.34,apronHintOptions,scene);
 // ─────────────────────── 世界状态与昼夜灯光 ───────────────────────
 const state={time:0,simTime:0,speed:1,paused:false,sound:false,phase:7/36,phaseTransition:null,autoDay:true,runway:true,city:true,emergency:0,emergencyClock:0,firePatrol:0,lastPatrol:0,buttonPress:{city:0,takeoff:0,emergency:0},hover:null};
 const palettes=[
@@ -746,16 +746,16 @@ function updateWorld(realDt){
 // ─────────────────────── 相机与射线拾取 ───────────────────────
 // 安全观察壳：低视角时始终在展桌外；高视角位于整个模型和空中回路上方。
 // 42-degree lens and a 30-degree three-quarter view, shared with BAYLINE.
-// A continuous aspect-aware fit prevents the table from shrinking abruptly on phones.
+// Fit the board laterally on narrow screens; retain the close BAYLINE tabletop crop on desktop.
 const HOME={theta:.46,elevation:.53,target:new T.Vector3(-1.4,G+.5,1.0)};
 function homeRadius(){
  const aspect=innerWidth/innerHeight,tanY=Math.tan(camera.fov*PI/360),tanX=tanY*aspect;
  const st=Math.sin(HOME.theta),ct=Math.cos(HOME.theta),se=Math.sin(HOME.elevation),ce=Math.cos(HOME.elevation);
- const eye=new T.Vector3(st*ce,se,ct*ce),right=new T.Vector3(ct,0,-st),up=new T.Vector3(-st*se,ce,-ct*se);
- let radius=76;
+ const eye=new T.Vector3(st*ce,se,ct*ce),right=new T.Vector3(ct,0,-st);
+ let radius=84;
  for(const x of[-35.2,35.2])for(const z of[-26.25,28.8])for(const y of[G-2.5,G+1]){
   const p=new T.Vector3(x,y,z).sub(HOME.target),depth=p.dot(eye);
-  radius=Math.max(radius,depth+Math.abs(p.dot(right))/(tanX*.92),depth+Math.abs(p.dot(up))/(tanY*.80));
+  radius=Math.max(radius,depth+Math.abs(p.dot(right))/(tanX*.94));
  }
  return radius;
 }
@@ -765,7 +765,11 @@ function updateCamera(dt,immediate=false){
  const r=view.radius,c=Math.cos(view.elevation);camera.position.set(view.target.x+Math.sin(view.theta)*r*c,view.target.y+Math.sin(view.elevation)*r,view.target.z+Math.cos(view.theta)*r*c);
  // Preserve the protected observation shell, above both aircraft flight circuits.
  if(Math.abs(camera.position.x)<39&&camera.position.z<30&&camera.position.y<G+18)camera.position.y=G+18;
- camera.position.x=Math.max(camera.position.x,-79);camera.position.y=Math.max(camera.position.y,G+6);camera.lookAt(view.target);camera.updateMatrixWorld();
+ camera.position.x=Math.max(camera.position.x,-79);camera.position.y=Math.max(camera.position.y,G+6);camera.lookAt(view.target);
+ // A portrait fit moves the eye back, not the miniature into a fixed fog bank.
+ scene.fog.near=Math.max(125,view.radius*1.45);scene.fog.far=Math.max(240,view.radius*2.8);
+ const far=Math.max(360,view.radius+180);if(Math.abs(camera.far-far)>1){camera.far=far;camera.updateProjectionMatrix();}
+ camera.updateMatrixWorld();
 }
 function resetView(){view.desiredTheta=HOME.theta;view.desiredElevation=HOME.elevation;view.desiredRadius=homeRadius();view.pan.copy(HOME.target);}
 updateCamera(1,true);scene.updateMatrixWorld(true);
