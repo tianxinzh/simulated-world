@@ -18,6 +18,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+      - name: Verify required build and browser tools
+        run: |
+          python3 --version
+          node --version
+          npm --version
       - name: Install pinned screenshot tools
         run: |
           npm install --no-save --no-package-lock playwright@1.55.1 sharp@0.34.3
