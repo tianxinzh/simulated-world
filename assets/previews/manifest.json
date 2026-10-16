@@ -1,6 +1,6 @@
 {
   "description": "Actual browser captures of the original simulator files. UI hidden only during capture.",
-  "sourceCommit": "1214b6bcffa17197fdd69bf78de80584813e1c14",
+  "sourceCommit": "d3c9a5f47a578946ea0f301493c8d91cb4c116c3",
   "scenes": [
     {
       "file": "bayline.html",
