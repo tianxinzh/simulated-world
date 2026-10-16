@@ -1,0 +1,34 @@
+{
+  "repository": "tianxinzh/simulated-world",
+  "pull_request": 2,
+  "pull_request_url": "https://github.com/tianxinzh/simulated-world/pull/2",
+  "source_head_sha": "276da4ae5f5f9e1b6acbc956248cde10589cfa84",
+  "tested_merge_sha": "b4f0a9db6f8cbbc56130bea8f2d352a732841334",
+  "binding_evidence": "Connected GitHub PR metadata and checkout log. Pull-request-triggered CI tests the synthetic merge commit, not the head directly.",
+  "run_id": 38975195517,
+  "run_number": 5,
+  "run_url": "https://github.com/tianxinzh/simulated-world/actions/runs/38975195517",
+  "workflow_event": "pull_request",
+  "run_conclusion": "success",
+  "successful_jobs": [
+    "browser"
+  ],
+  "captured_at_utc": "2026-10-16T22:27:13.650Z",
+  "screenshot_file": "simulated-world-pr2-ci-38975195517.jpg",
+  "screenshot_sha256": "45c0e24ab0fd8917caf33729bbf483bc347d30a9c646683a8bee9cb3359c7200",
+  "screenshot_bytes": 61212,
+  "screenshot_mime_type": "image/jpeg",
+  "dimensions_px": [
+    1165,
+    747
+  ],
+  "capture_method": "Live authenticated GitHub Actions summary in dot cloud browser via supported cua_repl Tab.getScreenshot(). Original returned bytes saved directly.",
+  "image_transformations": [],
+  "limitations": [
+    "Shows GitHub PR merge CI, not a direct-head workflow_dispatch run.",
+    "Screenshot is the actual viewport, not fabricated or rendered from local HTML."
+  ],
+  "checkout_log_evidence": [
+    "2026-10-16T22:21:00.7396694Z HEAD is now at b4f0a9d Merge 276da4ae5f5f9e1b6acbc956248cde10589cfa84 into 350c4c1118725c31dd8928fa9a8d1b04cdae366c"
+  ]
+}
